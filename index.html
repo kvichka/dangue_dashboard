@@ -1,0 +1,2334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cambodia National Dengue Surveillance — 2018–2026</title>
+
+<!-- ============================================================
+     CDN DEPENDENCIES
+     Chart.js v4 (canvas), Leaflet 1.9, PapaParse, html2canvas.
+     All pinned. If the machine is offline, download these four
+     files next to index.html and repoint the src attributes.
+     ============================================================ -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Archivo carries headings and body; IBM Plex Mono carries every number.
+     BILINGUAL HOOK: to switch on Khmer, add Battambang here and set LANG='kh' in
+     the LABELS block near the top of the script. Nothing else needs to change.
+     <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700&display=swap" rel="stylesheet"> -->
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   Sequential single-hue teal ramp for the choropleth (colourblind
+   safe, tested against deuteranopia/protanopia simulation).
+   Red (--alert) is reserved EXCLUSIVELY for endemic-channel breach.
+   Grey (--suppressed) means "we will not show you a number here".
+   ============================================================ */
+:root{
+  --ink:#0F1E26; --ink-2:#33474F; --muted:#6C8088; --faint:#95A5AB;
+  --hair:#D6DEDF; --hair-2:#E7ECEC; --paper:#EDF1F0; --panel:#FFFFFF;
+  --accent:#14646F; --accent-2:#0A424B; --accent-soft:#E2EEEE;
+  --alert:#B33A2B; --alert-soft:#F7E4E1;
+  --suppressed:#B9C0C4; --notreported:#C9D2D4;
+  --r1:#E9F3F2; --r2:#C2E0DE; --r3:#93C8C6; --r4:#60ABAC; --r5:#37888E; --r6:#1A6B74; --r7:#0A424B;
+  --ok:#2F6B4F;
+  --shadow:0 1px 2px rgba(15,30,38,.06), 0 4px 14px rgba(15,30,38,.05);
+  --mono:'IBM Plex Mono', ui-monospace, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:'Archivo', system-ui, -apple-system, sans-serif;
+  font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased;
+}
+.num{font-family:var(--mono); font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1}
+button{font-family:inherit; cursor:pointer}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+/* ---------- MASTHEAD ---------- */
+.masthead{
+  background:var(--ink); color:#EAF0F0; padding:14px 22px 0;
+  border-bottom:1px solid var(--ink);
+}
+.masthead-row{display:flex; align-items:baseline; gap:16px; flex-wrap:wrap}
+.masthead h1{
+  font-size:17px; font-weight:600; letter-spacing:-.01em; margin:0;
+}
+.masthead .sub{font-size:12px; color:#8FA6AC; letter-spacing:.02em}
+.masthead .extract{margin-left:auto; font-size:11px; color:#7E979E; letter-spacing:.04em; text-transform:uppercase}
+
+/* ---------- SIGNATURE: REPORTING RIBBON ----------
+   A 25-tick strip, one tick per province, shown wherever a
+   national figure is shown. It is the dashboard's standing
+   answer to "is this number low, or is the reporting low?" */
+.ribbon-wrap{display:flex; align-items:center; gap:10px; padding:9px 0 10px}
+.ribbon-label{font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:#7E979E; white-space:nowrap}
+.ribbon{display:flex; gap:2px; align-items:flex-end; height:14px; flex:1; min-width:120px}
+.ribbon i{flex:1; height:100%; background:#2C4048; border-radius:1px; display:block}
+.ribbon i.on{background:#59A9AF}
+.ribbon i.part{background:#2F6B73}
+.ribbon-read{font-size:11px; color:#B8CBCF; white-space:nowrap}
+
+/* ---------- COMMAND BAR ---------- */
+.command{
+  position:sticky; top:0; z-index:900; background:var(--panel);
+  border-bottom:1px solid var(--hair); padding:10px 22px;
+  box-shadow:0 1px 0 rgba(15,30,38,.04);
+}
+.command-grid{display:flex; gap:18px; align-items:flex-end; flex-wrap:wrap}
+.ctrl{display:flex; flex-direction:column; gap:5px; min-width:0}
+.ctrl > label{
+  font-size:10px; text-transform:uppercase; letter-spacing:.09em;
+  color:var(--muted); font-weight:600;
+}
+.ctrl select, .ctrl .multi-btn{
+  font-family:inherit; font-size:13px; padding:6px 9px; border:1px solid var(--hair);
+  background:#fff; border-radius:3px; color:var(--ink); min-height:32px;
+}
+.multi-wrap{position:relative}
+.multi-btn{text-align:left; min-width:190px; display:flex; justify-content:space-between; gap:10px; align-items:center}
+.multi-btn span.caret{color:var(--muted); font-size:10px}
+.multi-panel{
+  display:none; position:absolute; top:calc(100% + 4px); left:0; z-index:1000;
+  background:#fff; border:1px solid var(--hair); border-radius:4px; box-shadow:var(--shadow);
+  max-height:290px; overflow:auto; min-width:230px; padding:6px;
+}
+.multi-panel.open{display:block}
+.multi-panel .opt{display:flex; gap:8px; align-items:center; padding:5px 7px; border-radius:3px; font-size:13px}
+.multi-panel .opt:hover{background:var(--accent-soft)}
+.multi-panel .opt input{margin:0}
+.multi-tools{display:flex; gap:6px; padding:4px 7px 7px; border-bottom:1px solid var(--hair-2); margin-bottom:4px}
+.multi-tools button{font-size:11px; padding:3px 8px; border:1px solid var(--hair); background:#fff; border-radius:3px; color:var(--accent)}
+
+/* dual range slider */
+.range-dual{position:relative; width:230px; height:32px; display:flex; align-items:center}
+.range-dual input[type=range]{
+  position:absolute; width:100%; margin:0; background:none; pointer-events:none;
+  -webkit-appearance:none; appearance:none; height:32px;
+}
+.range-dual input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; pointer-events:all; width:15px; height:15px; border-radius:50%;
+  background:var(--accent); border:2px solid #fff; box-shadow:0 0 0 1px var(--accent); cursor:grab;
+}
+.range-dual input[type=range]::-moz-range-thumb{
+  pointer-events:all; width:15px; height:15px; border-radius:50%;
+  background:var(--accent); border:2px solid #fff; box-shadow:0 0 0 1px var(--accent); cursor:grab;
+}
+.range-track{position:absolute; left:0; right:0; height:3px; background:var(--hair); border-radius:2px}
+.range-fill{position:absolute; height:3px; background:var(--accent); border-radius:2px}
+.range-read{font-size:12px; color:var(--ink-2); min-width:112px}
+
+/* segmented metric toggle */
+.seg{display:inline-flex; border:1px solid var(--hair); border-radius:3px; overflow:hidden; height:32px}
+.seg button{
+  border:0; background:#fff; padding:0 12px; font-size:12px; color:var(--ink-2);
+  border-right:1px solid var(--hair);
+}
+.seg button:last-child{border-right:0}
+.seg button.active{background:var(--accent); color:#fff; font-weight:600}
+
+.btn-reset{
+  margin-left:auto; background:var(--ink); color:#fff; border:0; border-radius:3px;
+  padding:8px 14px; font-size:12px; font-weight:600; letter-spacing:.02em; height:32px;
+}
+.btn-reset:hover{background:var(--accent-2)}
+.btn-ghost{
+  background:#fff; color:var(--accent); border:1px solid var(--hair); border-radius:3px;
+  padding:8px 12px; font-size:12px; height:32px; font-weight:500;
+}
+.btn-ghost:hover{border-color:var(--accent); background:var(--accent-soft)}
+
+/* chips */
+.chips{display:flex; gap:6px; flex-wrap:wrap; padding:9px 22px 0; align-items:center}
+.chips .chips-lead{font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); font-weight:600}
+.chip{
+  display:inline-flex; align-items:center; gap:6px; background:var(--accent-soft);
+  border:1px solid #BFDCDC; color:var(--accent-2); border-radius:12px;
+  padding:2px 6px 2px 10px; font-size:12px;
+}
+.chip button{border:0; background:none; color:var(--accent); font-size:14px; line-height:1; padding:0 3px}
+.chip button:hover{color:var(--alert)}
+
+/* ---------- TABS ---------- */
+.tabs{display:flex; gap:0; padding:12px 22px 0; border-bottom:1px solid var(--hair); background:transparent}
+.tabs button{
+  background:none; border:0; border-bottom:2px solid transparent; padding:8px 16px 10px;
+  font-size:13px; font-weight:500; color:var(--muted); letter-spacing:.01em;
+}
+.tabs button.active{color:var(--ink); border-bottom-color:var(--accent); font-weight:600}
+.tabs button:hover{color:var(--ink)}
+
+.tabpanel{display:none; padding:18px 22px 40px}
+.tabpanel.active{display:block}
+
+/* ---------- PANELS ---------- */
+.grid{display:grid; gap:14px}
+.panel{
+  background:var(--panel); border:1px solid var(--hair); border-radius:4px;
+  padding:14px 16px 16px; box-shadow:var(--shadow); min-width:0;
+}
+.panel-head{display:flex; align-items:flex-start; gap:10px; margin-bottom:2px}
+.panel h2{
+  font-size:14px; font-weight:600; margin:0; letter-spacing:-.005em; line-height:1.3;
+}
+.panel .note{font-size:11.5px; color:var(--muted); margin:3px 0 10px; line-height:1.4}
+.panel .cam{
+  margin-left:auto; border:1px solid var(--hair); background:#fff; border-radius:3px;
+  width:26px; height:24px; color:var(--muted); font-size:12px; line-height:1; flex:0 0 auto;
+}
+.panel .cam:hover{color:var(--accent); border-color:var(--accent)}
+.chartbox{position:relative; height:250px}
+.chartbox.tall{height:310px}
+.chartbox.short{height:150px}
+
+/* ---------- KPI STRIP ---------- */
+.kpis{display:grid; grid-template-columns:repeat(5,1fr); gap:14px}
+.kpi{
+  background:var(--panel); border:1px solid var(--hair); border-radius:4px;
+  padding:12px 14px 13px; box-shadow:var(--shadow);
+  border-top:2px solid var(--accent);
+}
+.kpi.is-alert{border-top-color:var(--alert)}
+.kpi .k-label{font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); font-weight:600}
+.kpi .k-val{font-family:var(--mono); font-size:27px; font-weight:600; letter-spacing:-.02em; margin:5px 0 1px; line-height:1}
+.kpi .k-delta{font-size:12px; display:flex; align-items:center; gap:5px}
+.kpi .k-delta.up{color:var(--alert)} .kpi .k-delta.down{color:var(--ok)} .kpi .k-delta.flat{color:var(--muted)}
+.kpi .k-window{font-size:10.5px; color:var(--faint); margin-top:6px; letter-spacing:.01em}
+
+/* ---------- MAP ---------- */
+#map{height:390px; border-radius:3px; border:1px solid var(--hair); background:#F6F8F8}
+.leaflet-container{font-family:'Archivo',sans-serif; background:#F6F8F8}
+.map-legend{display:flex; flex-wrap:wrap; gap:14px; margin-top:10px; align-items:center; font-size:11px; color:var(--ink-2)}
+.ramp{display:flex; align-items:center; gap:0}
+.ramp i{width:26px; height:11px; display:block}
+.ramp-ends{font-size:10.5px; color:var(--muted); margin:0 6px}
+.legend-key{display:inline-flex; align-items:center; gap:5px}
+.legend-key i{width:13px; height:13px; border:1px solid var(--hair); border-radius:2px; display:inline-block}
+
+/* ---------- HEATMAP ---------- */
+.heatscroll{overflow-x:auto; padding-bottom:4px}
+.heat{display:grid; gap:1px; min-width:640px}
+.heat .hcell{height:19px; border-radius:1px}
+.heat .hlab{
+  font-size:11px; color:var(--ink-2); display:flex; align-items:center;
+  padding-right:8px; white-space:nowrap; justify-content:flex-end;
+}
+.heat .hcol{font-size:10px; color:var(--muted); text-align:center; letter-spacing:.03em}
+.hatch{
+  background-image:repeating-linear-gradient(45deg, var(--notreported) 0 3px, #EFF3F3 3px 6px);
+}
+/* a month that has not happened yet is not a missed report — keep them visually distinct */
+.notdue{background:#F6F8F8; border:1px dashed var(--hair-2)}
+.legend-key i.notdue{border:1px dashed var(--hair)}
+.hatch-alert{
+  background-image:repeating-linear-gradient(45deg, var(--alert) 0 3px, var(--alert-soft) 3px 6px);
+}
+
+/* ---------- TABLE ---------- */
+.tablewrap{overflow-x:auto}
+table.detail{border-collapse:collapse; width:100%; font-size:12.5px}
+table.detail th{
+  text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.08em;
+  color:var(--muted); font-weight:600; border-bottom:1px solid var(--hair);
+  padding:7px 9px; white-space:nowrap; cursor:pointer; user-select:none; background:#fff;
+  position:sticky; top:0;
+}
+table.detail th:hover{color:var(--accent)}
+table.detail th .sortmark{color:var(--accent); font-size:9px; margin-left:3px}
+table.detail td{padding:6px 9px; border-bottom:1px solid var(--hair-2); white-space:nowrap}
+table.detail td.n{text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums}
+table.detail tbody tr:hover{background:var(--accent-soft)}
+.pager{display:flex; align-items:center; gap:10px; margin-top:10px; font-size:12px; color:var(--ink-2)}
+.pager button{
+  border:1px solid var(--hair); background:#fff; border-radius:3px; padding:4px 10px; font-size:12px;
+}
+.pager button:disabled{opacity:.4; cursor:default}
+
+/* ---------- INSIGHTS ---------- */
+.insights ul{margin:0; padding:0; list-style:none}
+.insights li{
+  padding:8px 0 8px 15px; border-bottom:1px solid var(--hair-2); font-size:12.5px;
+  line-height:1.5; position:relative; color:var(--ink-2);
+}
+.insights li:last-child{border-bottom:0}
+.insights li::before{
+  content:""; position:absolute; left:0; top:14px; width:5px; height:5px;
+  background:var(--accent); border-radius:50%;
+}
+.insights li.flag::before{background:var(--alert)}
+.insights li strong{color:var(--ink); font-weight:600}
+.insights li .num{font-weight:600; color:var(--ink)}
+
+/* ---------- DATA QUALITY ---------- */
+.dq-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:14px}
+.dq-stat{border:1px solid var(--hair); border-radius:3px; padding:9px 11px}
+.dq-stat .v{font-family:var(--mono); font-size:19px; font-weight:600; letter-spacing:-.01em}
+.dq-stat .l{font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:600; margin-top:2px}
+.dq-stat.warn{border-color:#E3C6C0; background:#FCF6F5}
+.dq-stat.warn .v{color:var(--alert)}
+.dq-stat.pass{border-color:#C6DACD; background:#F6FAF7}
+.dq-stat.pass .v{color:var(--ok)}
+.callout{
+  border-left:3px solid var(--accent); background:#F5FAFA; padding:9px 12px;
+  font-size:12px; color:var(--ink-2); border-radius:0 3px 3px 0; margin-top:12px; line-height:1.5;
+}
+.callout.warn{border-left-color:var(--alert); background:#FCF6F5}
+.callout b{color:var(--ink)}
+
+/* locked (unfilterable) visuals */
+.locked{position:relative}
+.locked.is-locked .chartbox{opacity:.22; filter:grayscale(1)}
+.lockmsg{display:none}
+.locked.is-locked .lockmsg{
+  display:block; position:absolute; inset:auto 16px 16px; z-index:5;
+  background:var(--panel); border:1px solid #E3C6C0; border-left:3px solid var(--alert);
+  padding:10px 12px; font-size:12px; color:var(--ink-2); border-radius:0 3px 3px 0; box-shadow:var(--shadow);
+}
+
+/* footer */
+.foot{
+  margin-top:22px; padding-top:12px; border-top:1px solid var(--hair);
+  font-size:11px; color:var(--muted); line-height:1.6;
+}
+.foot b{color:var(--ink-2); font-weight:600}
+
+/* loading + error */
+#boot{
+  position:fixed; inset:0; background:var(--paper); z-index:9999;
+  display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px;
+}
+#boot .b1{font-size:13px; color:var(--ink-2)}
+#boot .b2{font-size:12px; color:var(--muted); max-width:520px; text-align:center; line-height:1.55}
+
+/* layout maps */
+.l-overview{grid-template-columns:1fr 1fr}
+.l-curve{grid-template-columns:1fr}
+.l-map{grid-template-columns:1.35fr 1fr}
+.span2{grid-column:1 / -1}
+
+@media (max-width:1180px){
+  .kpis{grid-template-columns:repeat(3,1fr)}
+}
+@media (max-width:1024px){
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .l-overview,.l-map{grid-template-columns:1fr}
+  .tabpanel{padding:16px 14px 36px}
+  .command{padding:10px 14px}
+  .masthead{padding:12px 14px 0}
+  .chips{padding:9px 14px 0}
+  .tabs{padding:12px 14px 0}
+}
+@media (max-width:700px){
+  .kpis{grid-template-columns:1fr}
+  .btn-reset{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important; animation:none !important}
+}
+</style>
+</head>
+<body>
+
+<div id="boot">
+  <div class="b1">Loading surveillance data…</div>
+  <div class="b2" id="boot-msg"></div>
+</div>
+
+<!-- ============================ MASTHEAD ============================ -->
+<header class="masthead">
+  <div class="masthead-row">
+    <h1>Cambodia National Dengue Surveillance</h1>
+    <span class="sub">25 provinces · 2018–2026 · monthly grain</span>
+    <span class="extract" id="extract-date">Extracted —</span>
+  </div>
+  <div class="ribbon-wrap">
+    <span class="ribbon-label">Reporting, current filter</span>
+    <div class="ribbon" id="hdr-ribbon" title="One tick per province in the current filter"></div>
+    <span class="ribbon-read num" id="hdr-ribbon-read">—</span>
+  </div>
+</header>
+
+<!-- ============================ COMMAND BAR ============================ -->
+<div class="command">
+  <div class="command-grid">
+    <div class="ctrl">
+      <label for="f-year">Year</label>
+      <div class="multi-wrap">
+        <button class="multi-btn" id="f-year" aria-haspopup="true" aria-expanded="false">
+          <span id="f-year-txt">2026</span><span class="caret">▾</span>
+        </button>
+        <div class="multi-panel" id="f-year-panel"></div>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label for="f-prov">Province</label>
+      <div class="multi-wrap">
+        <button class="multi-btn" id="f-prov" aria-haspopup="true" aria-expanded="false">
+          <span id="f-prov-txt">All 25 provinces</span><span class="caret">▾</span>
+        </button>
+        <div class="multi-panel" id="f-prov-panel"></div>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label>Month range</label>
+      <div style="display:flex; align-items:center; gap:10px">
+        <div class="range-dual">
+          <div class="range-track"></div><div class="range-fill" id="range-fill"></div>
+          <input type="range" id="m-lo" min="1" max="12" value="1" aria-label="First month">
+          <input type="range" id="m-hi" min="1" max="12" value="12" aria-label="Last month">
+        </div>
+        <span class="range-read num" id="range-read">Jan – Dec</span>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label>Metric</label>
+      <div class="seg" id="metric-seg">
+        <button data-metric="rate" class="active">Rate / 100,000</button>
+        <button data-metric="count">Case count</button>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label for="f-cmp">Compare with</label>
+      <select id="f-cmp"></select>
+    </div>
+
+    <button class="btn-ghost" id="btn-csv" title="Download the rows behind the current view">Export CSV</button>
+    <button class="btn-ghost" id="btn-png-tab" title="Save the whole tab as an image">Export tab PNG</button>
+    <button class="btn-reset" id="btn-reset">Reset all filters</button>
+  </div>
+</div>
+
+<div class="chips" id="chips"><span class="chips-lead">Active filters</span></div>
+
+<!-- ============================ TABS ============================ -->
+<nav class="tabs" id="tabs">
+  <button data-tab="t1" class="active">National overview</button>
+  <button data-tab="t2">Trends &amp; comparison</button>
+  <button data-tab="t3">Age, severity &amp; data quality</button>
+</nav>
+
+<!-- ============================ TAB 1 ============================ -->
+<section class="tabpanel active" id="t1">
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid l-curve" style="margin-top:14px">
+    <div class="panel" id="p-curve">
+      <div class="panel-head">
+        <div>
+          <h2 id="curve-title">Epidemic curve</h2>
+          <p class="note" id="curve-note"></p>
+        </div>
+        <button class="cam" data-png="p-curve" title="Save as PNG">⤓</button>
+      </div>
+      <div class="chartbox tall"><canvas id="c-curve"></canvas></div>
+    </div>
+
+    <div class="panel" id="p-complete">
+      <div class="panel-head">
+        <div>
+          <h2 id="complete-title">Reporting completeness by month</h2>
+          <p class="note">Provinces that submitted a report, out of those expected. Read this strip
+            before you read the curve above it &mdash; a fall in cases and a fall in reporting look identical
+            on a case chart. <span id="complete-sub"></span></p>
+        </div>
+        <button class="cam" data-png="p-complete" title="Save as PNG">⤓</button>
+      </div>
+      <div class="chartbox short"><canvas id="c-complete"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid l-map" style="margin-top:14px">
+    <div class="panel" id="p-map">
+      <div class="panel-head">
+        <div>
+          <h2 id="map-title">Provincial distribution</h2>
+          <p class="note" id="map-note">Click a province to filter every visual to it. Click again to remove it.</p>
+        </div>
+        <button class="cam" data-png="p-map" title="Save as PNG">⤓</button>
+      </div>
+      <div id="map"></div>
+      <div class="map-legend" id="map-legend"></div>
+    </div>
+
+    <div class="panel" id="p-top10">
+      <div class="panel-head">
+        <div>
+          <h2 id="top10-title">Top 10 provinces</h2>
+          <p class="note" id="top10-note"></p>
+        </div>
+        <button class="cam" data-png="p-top10" title="Save as PNG">⤓</button>
+      </div>
+      <div class="chartbox tall"><canvas id="c-top10"></canvas></div>
+    </div>
+  </div>
+
+  <div class="panel insights" id="p-insight" style="margin-top:14px">
+    <div class="panel-head">
+      <div>
+        <h2>What the current filter shows</h2>
+        <p class="note">Every line is recomputed from the filtered rows. Descriptive only — this panel does not
+          attribute change to interventions, weather, or control activity.</p>
+      </div>
+      <button class="cam" data-png="p-insight" title="Save as PNG">⤓</button>
+    </div>
+    <ul id="insight-list"></ul>
+  </div>
+
+  <div class="foot" id="foot1"></div>
+</section>
+
+<!-- ============================ TAB 2 ============================ -->
+<section class="tabpanel" id="t2">
+  <div class="grid l-overview">
+    <div class="panel" id="p-yoy">
+      <div class="panel-head">
+        <div><h2 id="yoy-title">Year-over-year overlay</h2>
+        <p class="note">One line per year. Click a year in the legend to hide it. Lines break at months no province reported.</p></div>
+        <button class="cam" data-png="p-yoy" title="Save as PNG">⤓</button>
+      </div>
+      <div class="chartbox tall"><canvas id="c-yoy"></canvas></div>
+    </div>
+
+    <div class="panel" id="p-cumul">
+      <div class="panel-head">
+        <div><h2 id="cumul-title">Cumulative cases</h2>
+        <p class="note" id="cumul-note"></p></div>
+        <button class="cam" data-png="p-cumul" title="Save as PNG">⤓</button>
+      </div>
+      <div class="chartbox tall"><canvas id="c-cumul"></canvas></div>
+    </div>
+
+    <div class="panel span2" id="p-heat">
+      <div class="panel-head">
+        <div><h2 id="heat-title">Province × month intensity</h2>
+        <p class="note" id="heat-note"></p></div>
+        <button class="cam" data-png="p-heat" title="Save as PNG">⤓</button>
+      </div>
+      <div class="heatscroll"><div class="heat" id="heat"></div></div>
+      <div class="map-legend" id="heat-legend"></div>
+    </div>
+
+    <div class="panel" id="p-endemic">
+      <div class="panel-head">
+        <div><h2 id="endemic-title">Endemic channel</h2>
+        <p class="note" id="endemic-note"></p></div>
+        <button class="cam" data-png="p-endemic" title="Save as PNG">⤓</button>
+      </div>
+      <div class="chartbox tall"><canvas id="c-endemic"></canvas></div>
+    </div>
+
+    <div class="panel" id="p-season">
+      <div class="panel-head">
+        <div><h2 id="season-title">Seasonality</h2>
+        <p class="note" id="season-note"></p></div>
+        <button class="cam" data-png="p-season" title="Save as PNG">⤓</button>
+      </div>
+      <div class="chartbox tall"><canvas id="c-season"></canvas></div>
+    </div>
+
+    <div class="panel span2" id="p-cfr">
+      <div class="panel-head">
+        <div><h2 id="cfr-title">Case fatality by province</h2>
+        <p class="note" id="cfr-note"></p></div>
+        <button class="cam" data-png="p-cfr" title="Save as PNG">⤓</button>
+      </div>
+      <div class="chartbox tall"><canvas id="c-cfr"></canvas></div>
+    </div>
+  </div>
+  <div class="foot" id="foot2"></div>
+</section>
+
+<!-- ============================ TAB 3 ============================ -->
+<section class="tabpanel" id="t3">
+  <div class="grid l-overview">
+    <div class="panel locked" id="p-age">
+      <div class="panel-head">
+        <div><h2 id="age-title">Cases and case fatality by age group</h2>
+        <p class="note" id="age-note"></p></div>
+        <button class="cam" data-png="p-age" title="Save as PNG">⤓</button>
+      </div>
+      <div class="chartbox tall"><canvas id="c-age"></canvas></div>
+      <div class="lockmsg" id="age-lock"></div>
+    </div>
+
+    <div class="panel locked" id="p-sev">
+      <div class="panel-head">
+        <div><h2 id="sev-title">Severity mix by age group</h2>
+        <p class="note" id="sev-note"></p></div>
+        <button class="cam" data-png="p-sev" title="Save as PNG">⤓</button>
+      </div>
+      <div class="chartbox tall"><canvas id="c-sev"></canvas></div>
+      <div class="lockmsg" id="sev-lock"></div>
+    </div>
+
+    <div class="panel span2" id="p-dq">
+      <div class="panel-head">
+        <div><h2>Data quality</h2>
+        <p class="note">Computed live from the loaded file, not copied from the workbook's QA sheet.</p></div>
+        <button class="cam" data-png="p-dq" title="Save as PNG">⤓</button>
+      </div>
+      <div class="dq-grid" id="dq-stats"></div>
+      <div id="dq-callouts"></div>
+      <h2 style="font-size:12.5px; margin:18px 0 4px">Reporting completeness, province × year</h2>
+      <p class="note">Months reported out of months expected. 2026 expects 7 months (Jan–Jul); every other year expects 12.</p>
+      <div class="heatscroll"><div class="heat" id="dq-heat"></div></div>
+    </div>
+
+    <div class="panel span2" id="p-table">
+      <div class="panel-head">
+        <div><h2>Filtered rows</h2>
+        <p class="note" id="table-note">Every active filter applied. Click a column header to sort.</p></div>
+        <button class="cam" data-png="p-table" title="Save as PNG">⤓</button>
+      </div>
+      <div class="tablewrap">
+        <table class="detail" id="detail">
+          <thead><tr id="detail-head"></tr></thead>
+          <tbody id="detail-body"></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <button id="pg-prev">Previous</button>
+        <span id="pg-read" class="num"></span>
+        <button id="pg-next">Next</button>
+      </div>
+    </div>
+  </div>
+  <div class="foot" id="foot3"></div>
+</section>
+
+<!-- Fallback payload, loaded via <script src> because that works from file://
+     where fetch() does not. Used only if the fetch path fails. -->
+<script src="data/inline-data.js"></script>
+
+<script>
+/* ================================================================
+   CAMBODIA NATIONAL DENGUE SURVEILLANCE DASHBOARD
+   Vanilla ES6. No framework, no build step.
+
+   ARCHITECTURE (the whole point of the file):
+     STATE  ->  applyFilters()  ->  recompute()  ->  render*()  ->  DOM
+   Nothing renders from raw data. Every visual reads from the single
+   AGG object produced by recompute(). One slicer change calls
+   update() and nothing else, so two panels can never disagree about
+   a national total.
+   ================================================================ */
+'use strict';
+
+/* ---------------------------------------------------------------
+   0. LABELS — single point of translation.
+   BILINGUAL HOOK: set LANG='kh', fill the kh strings, and load the
+   Battambang webfont in <head>. No other code changes needed.
+   The kh strings are deliberately left unfilled rather than machine
+   translated — Khmer surveillance terminology should be signed off
+   by CNM/NDCP against Chuon Nath spelling before it appears on a
+   screen a Program Director reads.
+   --------------------------------------------------------------- */
+const LANG = 'en';
+
+/* ---------------------------------------------------------------
+   1. CONSTANTS
+   --------------------------------------------------------------- */
+const MONTHS   = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const RAMP     = ['#E9F3F2','#C2E0DE','#93C8C6','#60ABAC','#37888E','#1A6B74','#0A424B'];
+const C_ALERT  = '#B33A2B';
+const C_ACCENT = '#14646F';
+const C_GREY   = '#B9C0C4';
+const C_INK    = '#0F1E26';
+const C_MUTED  = '#6C8088';
+const C_HAIR   = '#D6DEDF';
+
+const MIN_CASES_FOR_RATE = 5;   // rule 5 — below this the rate is unstable
+const MIN_CASES_FOR_CFR  = 20;  // rule 6 — below this CFR is suppressed
+const BASELINE_MIN_YEARS = 3;   // endemic channel needs this many contributing years
+
+/* Province name normalisation. Lookup_Lists carries the DHF bulletin
+   abbreviations; the boundary file carries its own spellings. Everything
+   funnels to the canonical full name used in National_Monthly_Entry. */
+const NAME_MAP = {
+  'b.meanchey':'Banteay Meanchey','bantey meanchey':'Banteay Meanchey','banteay meanchey':'Banteay Meanchey',
+  'battambang':'Battambang','batdambang':'Battambang',
+  'kampong cham':'Kampong Cham','kg.cham':'Kampong Cham',
+  'kg.chhnang':'Kampong Chhnang','kampong chhnang':'Kampong Chhnang',
+  'kampongspeu':'Kampong Speu','kampong speu':'Kampong Speu',
+  'kampongthom':'Kampong Thom','kampong thom':'Kampong Thom','kampong thum':'Kampong Thom',
+  'kampot':'Kampot','kandal':'Kandal','kep':'Kep','koh kong':'Koh Kong','kaoh kong':'Koh Kong',
+  'kratie':'Kratie','kracheh':'Kratie',
+  'mondulkiri':'Mondul Kiri','mondul kiri':'Mondul Kiri',
+  'o.meanchey':'Otdar Meanchey','oddar meanchey':'Otdar Meanchey','otdar meanchey':'Otdar Meanchey',
+  'paillin':'Pailin','pailin':'Pailin','krong pailin':'Pailin',
+  'phnom penh':'Phnom Penh',
+  'k.pr.sihaknouk':'Preah Sihanouk','preah sihanouk':'Preah Sihanouk','sihanoukville':'Preah Sihanouk',
+  'krong preah sihanouk':'Preah Sihanouk',
+  'preahvihear':'Preah Vihear','preah vihear':'Preah Vihear',
+  'preyveng':'Prey Veng','prey veng':'Prey Veng',
+  'pursat':'Pursat','pouthisat':'Pursat',
+  'rattanakiri':'Ratanak Kiri','ratanakiri':'Ratanak Kiri','ratanak kiri':'Ratanak Kiri',
+  'siem reap':'Siem Reap','siemreab':'Siem Reap',
+  'stungtreng':'Stung Treng','stung treng':'Stung Treng',
+  'svayrieng':'Svay Rieng','svay rieng':'Svay Rieng',
+  'takeo':'Takeo','takev':'Takeo',
+  'tboung khmum':'Tboung Khmum','tbong khmum':'Tboung Khmum','tbaung khmum':'Tboung Khmum'
+};
+const canon = s => NAME_MAP[String(s || '').trim().toLowerCase()] || String(s || '').trim();
+
+/* 3-letter codes, used only to build export filenames */
+const CODE = {
+  'Banteay Meanchey':'BMC','Battambang':'BTB','Kampong Cham':'KPC','Kampong Chhnang':'KCH',
+  'Kampong Speu':'KSP','Kampong Thom':'KTM','Kampot':'KPT','Kandal':'KDL','Kep':'KEP',
+  'Koh Kong':'KKG','Kratie':'KRT','Mondul Kiri':'MDK','Otdar Meanchey':'OMC','Pailin':'PLN',
+  'Phnom Penh':'PNH','Preah Sihanouk':'PSH','Preah Vihear':'PVH','Prey Veng':'PVG','Pursat':'PST',
+  'Ratanak Kiri':'RTK','Siem Reap':'SRP','Stung Treng':'STG','Svay Rieng':'SVR','Takeo':'TKO',
+  'Tboung Khmum':'TKM'
+};
+
+/* ---------------------------------------------------------------
+   2. FORMATTERS — counts no decimals, IR and CFR one decimal
+   --------------------------------------------------------------- */
+const fInt  = n => (n == null || !isFinite(n)) ? '\u2014' : Math.round(n).toLocaleString('en-US');
+const f1    = n => (n == null || !isFinite(n)) ? '\u2014' : n.toFixed(1);
+const fPct  = n => (n == null || !isFinite(n)) ? '\u2014' : (n > 0 ? '+' : '') + n.toFixed(1) + '%';
+const mName = m => MONTHS[m - 1];
+const rangeLabel = (lo, hi) => lo === hi ? mName(lo) : mName(lo) + '\u2013' + mName(hi);
+
+/* ---------------------------------------------------------------
+   3. DATA LOADING
+   Preferred path: fetch the external CSV/GeoJSON and parse with
+   PapaParse. Opening the file straight from disk (file://) blocks
+   fetch on cross-origin grounds, so we fall back to the inline
+   payload, which is the same data generated from the same workbook.
+   Both paths produce an identical RAW object.
+   --------------------------------------------------------------- */
+const RAW = { cases: [], pop: {}, ages: [], geo: null };
+const DQ  = { source: '', joinFailures: [], geoUnmatched: [], dataUnmapped: [], popAnomalies: [], exampleDropped: 0 };
+const DIM = { provinces: [], years: [], latestYear: 0, latestMonth: 0 };
+const IDX = {};
+
+function parseCSV(text) {
+  return Papa.parse(text.trim(), { header: true, skipEmptyLines: true, dynamicTyping: true }).data;
+}
+
+async function loadData() {
+  try {
+    const [c, p, a, g] = await Promise.all([
+      fetch('data/cases.csv').then(r => { if (!r.ok) throw 0; return r.text(); }),
+      fetch('data/population.csv').then(r => { if (!r.ok) throw 0; return r.text(); }),
+      fetch('data/agegroups.csv').then(r => { if (!r.ok) throw 0; return r.text(); }),
+      fetch('data/cambodia_provinces.geojson').then(r => { if (!r.ok) throw 0; return r.json(); })
+    ]);
+    RAW.cases = parseCSV(c).map(r => ({
+      prov: canon(r.Province), year: +r.Year, month: +r.MonthNum,
+      cases: +r.Cases, deaths: +r.Deaths
+    }));
+    parseCSV(p).forEach(row => {
+      const name = canon(row.Province); RAW.pop[name] = {};
+      Object.keys(row).forEach(k => { if (/^\d{4}$/.test(k)) RAW.pop[name][+k] = +row[k]; });
+    });
+    RAW.ages = parseCSV(a).map(r => ({
+      group: r.AgeGroup, year: +r.Year, cases: +r.Cases, deaths: +r.Deaths,
+      DF: +r.DF, DHF: +r.DHF, DSS: +r.DSS
+    }));
+    RAW.geo = g;
+    DQ.source = 'external CSV + GeoJSON';
+  } catch (e) {
+    if (!window.__DENGUE_INLINE__) throw new Error('no-data');
+    const I = window.__DENGUE_INLINE__;
+    RAW.cases = I.cases.map(r => ({ prov: canon(r[0]), year: r[1], month: r[2], cases: r[3], deaths: r[4] }));
+    Object.keys(I.population).forEach(k => {
+      const name = canon(k); RAW.pop[name] = {};
+      Object.keys(I.population[k]).forEach(y => { RAW.pop[name][+y] = I.population[k][y]; });
+    });
+    RAW.ages = I.agegroups.map(r => ({ group: r[0], year: r[1], cases: r[2], deaths: r[3], DF: r[4], DHF: r[5], DSS: r[6] }));
+    RAW.geo = I.geo;
+    DQ.source = 'inline fallback (opened from file://)';
+  }
+
+  /* ---- MANDATORY CLEANING, rule 1: drop the template placeholder ---- */
+  const before = RAW.cases.length;
+  RAW.cases = RAW.cases.filter(r => r.prov.toUpperCase() !== 'EXAMPLE' && r.prov !== '');
+  DQ.exampleDropped = before - RAW.cases.length;
+
+  /* ---- rule 2: validate every province joins to the population table ---- */
+  const provsInCases = [...new Set(RAW.cases.map(r => r.prov))].sort();
+  provsInCases.forEach(p => {
+    if (!RAW.pop[p]) { DQ.joinFailures.push(p); console.error('POPULATION JOIN FAILED:', p); }
+  });
+
+  /* attach population; no match means null, never 0 */
+  RAW.cases.forEach(r => { r.pop = (RAW.pop[r.prov] && RAW.pop[r.prov][r.year]) || null; });
+
+  /* ---- validate the boundary file joins both ways ---- */
+  const geoNames = new Set();
+  RAW.geo.features.forEach(f => {
+    const n = canon(f.properties.name || f.properties.shapeName || f.properties.NAME_1);
+    f.properties.__key = n; geoNames.add(n);
+  });
+  provsInCases.forEach(p => { if (!geoNames.has(p)) DQ.dataUnmapped.push(p); });
+  geoNames.forEach(n => { if (provsInCases.indexOf(n) < 0) DQ.geoUnmatched.push(n); });
+  if (DQ.dataUnmapped.length) console.error('PROVINCES WITH NO POLYGON:', DQ.dataUnmapped);
+
+  /* ---- population plausibility: flag any year a province did not grow ---- */
+  Object.keys(RAW.pop).forEach(p => {
+    const yrs = Object.keys(RAW.pop[p]).map(Number).sort((a, b) => a - b);
+    for (let i = 1; i < yrs.length; i++) {
+      if (RAW.pop[p][yrs[i]] === RAW.pop[p][yrs[i - 1]]) {
+        DQ.popAnomalies.push({ prov: p, year: yrs[i], prev: yrs[i - 1], value: RAW.pop[p][yrs[i]] });
+      }
+    }
+  });
+
+  DIM.provinces = provsInCases;
+  DIM.years = [...new Set(RAW.cases.map(r => r.year))].sort((a, b) => a - b);
+  DIM.latestYear = Math.max.apply(null, DIM.years);
+  DIM.latestMonth = Math.max.apply(null, RAW.cases.filter(r => r.year === DIM.latestYear).map(r => r.month));
+  RAW.cases.forEach(r => { IDX[r.prov + '|' + r.year + '|' + r.month] = r; });
+}
+
+/* ---------------------------------------------------------------
+   4. STATE — the only mutable source of truth
+   --------------------------------------------------------------- */
+const STATE = {
+  filters: { years: [], monthRange: [1, 12], provinces: [] },  // empty province array = all
+  metric: 'rate',
+  comparisonYear: null,
+  tab: 't1',
+  sort: { col: 'cases', dir: -1 },
+  page: 0
+};
+
+/* ---------------------------------------------------------------
+   5. applyFilters — returns the filtered record set, nothing else
+   --------------------------------------------------------------- */
+function applyFilters() {
+  const years = STATE.filters.years, mr = STATE.filters.monthRange, provinces = STATE.filters.provinces;
+  const lo = mr[0], hi = mr[1];
+  const pset = provinces.length ? new Set(provinces) : null;
+  return RAW.cases.filter(r =>
+    years.indexOf(r.year) >= 0 && r.month >= lo && r.month <= hi && (!pset || pset.has(r.prov))
+  );
+}
+
+/* ---------------------------------------------------------------
+   6. recompute — derives EVERY aggregate, once, from that set
+   --------------------------------------------------------------- */
+const AGG = {};
+
+function activeProvinces() {
+  return STATE.filters.provinces.length ? STATE.filters.provinces.slice() : DIM.provinces.slice();
+}
+
+/* Sum rows into a total. The population denominator counts each
+   province-year once (person-time), never once per month. */
+function summarise(rows) {
+  let cases = 0, deaths = 0;
+  const pyKeys = new Set();
+  rows.forEach(r => {
+    cases += r.cases; deaths += r.deaths;
+    if (r.pop) pyKeys.add(r.prov + '|' + r.year);
+  });
+  let pop = 0;
+  pyKeys.forEach(k => { const parts = k.split('|'); pop += RAW.pop[parts[0]][+parts[1]]; });
+  return {
+    cases: cases, deaths: deaths, pop: pop,
+    ir:  pop > 0 ? cases / pop * 1e5 : null,
+    cfr: cases >= MIN_CASES_FOR_CFR ? deaths / cases * 100 : null,
+    cfrRaw: cases > 0 ? deaths / cases * 100 : null
+  };
+}
+
+function rowsFor(year, monthSet, provs) {
+  const pset = new Set(provs);
+  return RAW.cases.filter(r => r.year === year && monthSet.has(r.month) && pset.has(r.prov));
+}
+
+function recompute() {
+  const rows  = applyFilters();
+  const provs = activeProvinces();
+  const lo = STATE.filters.monthRange[0], hi = STATE.filters.monthRange[1];
+  const yrs = STATE.filters.years.slice().sort((a, b) => a - b);
+  const curYear = yrs.length ? Math.max.apply(null, yrs) : DIM.latestYear;
+
+  /* ---- RULE 3: like-for-like window ----
+     The comparison window is the set of months that actually carry data
+     in the selected years, not the slider range. Filter to 2026 with the
+     slider on Jan–Dec and you still compare Jan–Jul against Jan–Jul. */
+  const monthsWithData = [...new Set(rows.map(r => r.month))].sort((a, b) => a - b);
+  const effMonths = new Set(monthsWithData);
+  const effLo = monthsWithData.length ? monthsWithData[0] : lo;
+  const effHi = monthsWithData.length ? monthsWithData[monthsWithData.length - 1] : hi;
+  const windowTxt = rangeLabel(effLo, effHi);
+  const truncated = (effLo !== lo || effHi !== hi);
+
+  const cmpYear = STATE.comparisonYear;
+  const cmpRows = (cmpYear != null && yrs.indexOf(cmpYear) < 0) ? rowsFor(cmpYear, effMonths, provs) : [];
+  const cmpMonths = [...new Set(cmpRows.map(r => r.month))];
+  /* if the comparison year lacks months the selection has, the comparison is
+     not like-for-like; we say so rather than compute against an incomplete base */
+  const cmpComparable = cmpRows.length > 0 && monthsWithData.every(m => cmpMonths.indexOf(m) >= 0);
+
+  /* Matching months is necessary but not sufficient. A year can report every
+     month and still be missing a third of its provinces, which would make a
+     percentage change read as an epidemiological signal when it is a reporting
+     one. We surface the difference in province-months rather than hiding it. */
+  const curPM = rows.length;
+  const cmpPM = cmpRows.length;
+  const cmpCoverageGap = (cmpPM > 0) ? (curPM - cmpPM) : null;
+  const cmpProvsMissing = cmpPM > 0
+    ? provs.filter(p => rows.some(r => r.prov === p) && !cmpRows.some(r => r.prov === p))
+    : [];
+
+  const cur = summarise(rows);
+  const cmp = cmpRows.length ? summarise(cmpRows) : null;
+
+  /* ---- monthly national series, RULE 2: missing stays null ----
+     "Not yet due" and "failed to report" are different facts and are kept
+     apart everywhere. Aug-Dec 2026 have not happened; Mar 2021 was missed.
+     Collapsing the two would put a fake reporting failure on every chart
+     for the remainder of the current year. */
+  const isDue = (y, m) => y < DIM.latestYear || m <= DIM.latestMonth;
+  const monthly = [];
+  for (let m = lo; m <= hi; m++) {
+    const dueYears = yrs.filter(y => isDue(y, m));
+    const sub = rows.filter(r => r.month === m);
+    const reportingProvs = new Set(sub.map(r => r.prov));
+    const notReporting = dueYears.length ? provs.filter(p => !reportingProvs.has(p)) : [];
+    const expected = provs.length * dueYears.length;
+    const base = { m: m, due: dueYears.length > 0, reporting: sub.length, expected: expected,
+                   notReporting: notReporting,
+                   provisional: (yrs.length === 1 && yrs[0] === DIM.latestYear && m === DIM.latestMonth) };
+    if (sub.length === 0) {
+      monthly.push(Object.assign(base, { cases: null, deaths: null, ir: null }));
+    } else {
+      const s = summarise(sub);
+      monthly.push(Object.assign(base, { cases: s.cases, deaths: s.deaths, ir: s.ir }));
+    }
+  }
+
+  const cmpMonthly = {};
+  if (cmpYear != null) {
+    for (let m = lo; m <= hi; m++) {
+      const sub = RAW.cases.filter(r => r.year === cmpYear && r.month === m && provs.indexOf(r.prov) >= 0);
+      cmpMonthly[m] = sub.length ? summarise(sub) : null;
+    }
+  }
+
+  /* ---- per-province aggregates ---- */
+  const byProv = {};
+  provs.forEach(p => {
+    const sub  = rows.filter(r => r.prov === p);
+    const csub = cmpRows.filter(r => r.prov === p);
+    const s  = sub.length ? summarise(sub) : null;
+    const cs = csub.length ? summarise(csub) : null;
+    byProv[p] = {
+      prov: p, reported: sub.length > 0, monthsReported: sub.length,
+      cases: s ? s.cases : null, deaths: s ? s.deaths : null,
+      pop: s ? s.pop : null, ir: s ? s.ir : null,
+      cfr: s ? s.cfr : null, cfrRaw: s ? s.cfrRaw : null,
+      cmpCases: cs ? cs.cases : null, cmpIr: cs ? cs.ir : null,
+      unstable: !s || s.cases < MIN_CASES_FOR_RATE,          /* RULE 5 */
+      deltaAbs: (s && cs) ? s.cases - cs.cases : null,
+      deltaPct: (s && cs && cs.cases > 0) ? (s.cases - cs.cases) / cs.cases * 100 : null
+    };
+  });
+
+  /* ---- endemic channel: national, per calendar month ----
+     Baseline = every year in the file strictly before the current year.
+     A year contributes to a month only if that month was actually reported. */
+  const baselineYears = DIM.years.filter(y => y < curYear);
+  /* The observed line is ALWAYS a single year (the most recent one selected).
+     A threshold built from single-year monthly totals cannot be compared with a
+     sum across several selected years — that would breach on arithmetic alone.
+     multiYear tells the renderer to say which year it is showing. */
+  const multiYear = yrs.length > 1;
+  const channel = [];
+  for (let m = lo; m <= hi; m++) {
+    const vals = [];
+    baselineYears.forEach(y => {
+      const sub = RAW.cases.filter(r => r.year === y && r.month === m && provs.indexOf(r.prov) >= 0);
+      if (sub.length) vals.push(sub.reduce((a, r) => a + r.cases, 0));
+    });
+    let mean = null, sd = null, thr = null;
+    if (vals.length >= 2) {
+      mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+      sd = Math.sqrt(vals.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (vals.length - 1));
+      thr = mean + 2 * sd;
+    }
+    const obsRows = RAW.cases.filter(r => r.year === curYear && r.month === m && provs.indexOf(r.prov) >= 0);
+    const observed = obsRows.length ? obsRows.reduce((a, r) => a + r.cases, 0) : null;
+    channel.push({
+      m: m, n: vals.length, mean: mean, sd: sd, threshold: thr,
+      observed: observed,
+      breach: (thr != null && observed != null && observed > thr)
+    });
+  }
+  const withN = channel.filter(c => c.n > 0).map(c => c.n);
+  const channelYearsMin = withN.length ? Math.min.apply(null, withN) : 0;
+  const channelYearsMax = withN.length ? Math.max.apply(null, withN) : 0;
+
+  /* ---- province alert threshold over the effective window ----
+     A baseline year counts only if that province reported every month in the
+     window that year — otherwise its total is an undercount, not a low year. */
+  const alerts = [];
+  /* Window for the province alert is the months the CURRENT year actually holds,
+     inside the selected range. Selecting 2018-2026 must not test 2026's Jan-Jul
+     total against full-year baselines. */
+  const alertMonths = [];
+  for (let m = lo; m <= hi; m++) if (isDue(curYear, m)) alertMonths.push(m);
+  provs.forEach(p => {
+    const vals = [];
+    baselineYears.forEach(y => {
+      let sum = 0, complete = true;
+      alertMonths.forEach(m => {
+        const rec = IDX[p + '|' + y + '|' + m];
+        if (!rec) complete = false; else sum += rec.cases;
+      });
+      if (complete) vals.push(sum);
+    });
+    /* tested against the current year alone, for the same reason as the channel */
+    let curSum = null;
+    alertMonths.forEach(m => {
+      const rec = IDX[p + '|' + curYear + '|' + m];
+      if (rec) curSum = (curSum || 0) + rec.cases;
+    });
+    byProv[p].curYearCases = curSum;
+    if (vals.length >= BASELINE_MIN_YEARS && curSum != null) {
+      const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const sd = Math.sqrt(vals.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (vals.length - 1));
+      byProv[p].threshold = mean + 2 * sd;
+      byProv[p].thrYears = vals.length;
+      byProv[p].breach = curSum > byProv[p].threshold;
+      if (byProv[p].breach) alerts.push(p);
+    } else {
+      byProv[p].threshold = null; byProv[p].thrYears = vals.length; byProv[p].breach = false;
+    }
+  });
+
+  /* ---- consecutive breach months, per province ---- */
+  const consec = {};
+  provs.forEach(p => {
+    let run = 0;
+    for (let i = alertMonths.length - 1; i >= 0; i--) {
+      const m = alertMonths[i];
+      const vals = [];
+      baselineYears.forEach(y => { const rec = IDX[p + '|' + y + '|' + m]; if (rec) vals.push(rec.cases); });
+      if (vals.length < BASELINE_MIN_YEARS) break;
+      const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+      const sd = Math.sqrt(vals.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (vals.length - 1));
+      const rec = IDX[p + '|' + curYear + '|' + m];
+      if (rec && rec.cases > mean + 2 * sd) run++; else break;
+    }
+    if (run > 0) consec[p] = run;
+  });
+
+  /* ---- reporting gaps: 2+ consecutive unreported months ---- */
+  const gaps = [];
+  provs.forEach(p => {
+    let run = 0, best = 0, startM = null, bestStart = null;
+    for (let m = lo; m <= hi; m++) {
+      const any = yrs.some(y => IDX[p + '|' + y + '|' + m]);
+      const expected = yrs.some(y => y < DIM.latestYear || m <= DIM.latestMonth);
+      if (!any && expected) {
+        if (run === 0) startM = m;
+        run++;
+        if (run > best) { best = run; bestStart = startM; }
+      } else run = 0;
+    }
+    if (best >= 2) gaps.push({ prov: p, months: best, from: bestStart, to: bestStart + best - 1 });
+  });
+
+  /* ---- heatmap matrix ---- */
+  const heat = provs.map(p => ({
+    prov: p,
+    cells: Array.from({ length: hi - lo + 1 }, (_, i) => {
+      const m = lo + i;
+      const recs = yrs.map(y => IDX[p + '|' + y + '|' + m]).filter(Boolean);
+      const due = yrs.some(y => isDue(y, m));
+      if (!recs.length) return { m: m, reported: false, due: due };
+      const c = recs.reduce((a, r) => a + r.cases, 0);
+      const d = recs.reduce((a, r) => a + r.deaths, 0);
+      const pop = recs.reduce((a, r) => a + (r.pop || 0), 0);
+      return { m: m, reported: true, due: true, cases: c, deaths: d, ir: pop ? c / pop * 1e5 : null,
+               provisional: yrs.length === 1 && yrs[0] === DIM.latestYear && m === DIM.latestMonth };
+    })
+  }));
+
+  /* ---- seasonality: mean cases by calendar month across all years ---- */
+  const season = [];
+  for (let m = 1; m <= 12; m++) {
+    const vals = [];
+    DIM.years.forEach(y => {
+      const sub = RAW.cases.filter(r => r.year === y && r.month === m && provs.indexOf(r.prov) >= 0);
+      if (sub.length) vals.push(sub.reduce((a, r) => a + r.cases, 0));
+    });
+    season.push({ m: m, mean: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null, n: vals.length });
+  }
+
+  /* ---- year-over-year series, all years, current province filter ---- */
+  const yoy = DIM.years.map(y => ({
+    year: y,
+    series: Array.from({ length: 12 }, (_, i) => {
+      const sub = RAW.cases.filter(r => r.year === y && r.month === i + 1 && provs.indexOf(r.prov) >= 0);
+      if (!sub.length) return null;
+      const s = summarise(sub);
+      return STATE.metric === 'rate' ? s.ir : s.cases;
+    })
+  }));
+
+  Object.assign(AGG, {
+    rows: rows, provs: provs, yrs: yrs, curYear: curYear, cur: cur, cmp: cmp,
+    cmpYear: cmpYear, cmpComparable: cmpComparable,
+    curPM: curPM, cmpPM: cmpPM, cmpCoverageGap: cmpCoverageGap, cmpProvsMissing: cmpProvsMissing,
+    effMonths: effMonths, effLo: effLo, effHi: effHi, windowTxt: windowTxt,
+    truncated: truncated, monthsWithData: monthsWithData, multiYear: multiYear,
+    monthly: monthly, cmpMonthly: cmpMonthly, byProv: byProv,
+    channel: channel, channelYearsMin: channelYearsMin, channelYearsMax: channelYearsMax,
+    alerts: alerts, consec: consec, gaps: gaps, heat: heat, season: season, yoy: yoy,
+    baselineYears: baselineYears,
+    ages: RAW.ages.filter(a => a.year === DIM.latestYear)
+  });
+}
+/* ---------------------------------------------------------------
+   7. RENDERERS — read only from AGG. Charts are built once and
+   refreshed with chart.data + chart.update(), never re-instantiated.
+   --------------------------------------------------------------- */
+const CH = {};
+let MAP = null, GEOLAYER = null;
+
+const metricLabel = () => STATE.metric === 'rate' ? 'Cases per 100,000' : 'Cases';
+const metricVal   = o => STATE.metric === 'rate' ? o.ir : o.cases;
+const metricFmt   = v => STATE.metric === 'rate' ? f1(v) : fInt(v);
+
+const TIP = {
+  backgroundColor: '#0F1E26', padding: 10, cornerRadius: 3,
+  titleFont: { family: 'Archivo', size: 12, weight: '600' },
+  bodyFont: { family: 'IBM Plex Mono', size: 11.5 },
+  boxWidth: 8, boxHeight: 8
+};
+const AX_X = { grid: { display: false }, border: { color: C_HAIR },
+               ticks: { color: C_MUTED, font: { family: 'Archivo', size: 11 } } };
+const axY = title => ({
+  grid: { color: '#EDF1F1' }, border: { display: false }, beginAtZero: true,
+  title: title ? { display: true, text: title, color: C_MUTED, font: { family: 'Archivo', size: 11 } } : undefined,
+  ticks: { color: C_MUTED, font: { family: 'IBM Plex Mono', size: 10.5 } }
+});
+const LEGEND = (box) => ({ display: true, position: 'bottom',
+  labels: { boxWidth: 10, boxHeight: box || 10, padding: 12,
+            font: { family: 'Archivo', size: 11 }, color: C_MUTED } });
+
+function baseOpts(extra) {
+  return Object.assign({
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: 180 },
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { display: false }, tooltip: TIP },
+    scales: { x: AX_X, y: axY() }
+  }, extra || {});
+}
+function draw(key, canvasId, type, data, options) {
+  if (!CH[key]) CH[key] = new Chart(document.getElementById(canvasId), { type: type, data: data, options: options });
+  else { CH[key].data = data; CH[key].options = options; CH[key].update(); }
+}
+
+/* ---------- SIGNATURE: header reporting ribbon ----------
+   One tick per province in the filter. It sits beside every national
+   figure so "is this low, or is the reporting low" is always visible. */
+function renderRibbon() {
+  const monthsExpected = AGG.monthly.length * Math.max(1, AGG.yrs.length);
+  document.getElementById('hdr-ribbon').innerHTML = AGG.provs.map(p => {
+    const rep = AGG.byProv[p].monthsReported;
+    const cls = rep === 0 ? '' : (rep >= monthsExpected ? 'on' : 'part');
+    return '<i class="' + cls + '" title="' + p + ': ' + rep + ' province-month' + (rep === 1 ? '' : 's') + ' reported"></i>';
+  }).join('');
+  const full = AGG.provs.filter(p => AGG.byProv[p].monthsReported > 0).length;
+  document.getElementById('hdr-ribbon-read').textContent = full + '/' + AGG.provs.length + ' reporting';
+}
+
+/* ---------- KPI strip ---------- */
+function delta(cur, prev, invertGood) {
+  if (prev == null || prev === 0 || !AGG.cmpComparable) return { txt: 'no like-for-like comparison', cls: 'flat', arrow: '' };
+  const pct = (cur - prev) / prev * 100;
+  const cls = Math.abs(pct) < 0.05 ? 'flat' : (pct > 0 ? (invertGood ? 'down' : 'up') : (invertGood ? 'up' : 'down'));
+  return { txt: fPct(pct) + ' vs ' + AGG.cmpYear, cls: cls, arrow: pct > 0 ? '\u25B2' : (pct < 0 ? '\u25BC' : '\u25A0') };
+}
+
+function renderKPIs() {
+  const c = AGG.cur, p = AGG.cmp;
+  const win = AGG.windowTxt + ' ' + AGG.yrs.join(', ') +
+    (AGG.cmpYear != null ? ' vs ' + AGG.windowTxt + ' ' + AGG.cmpYear : '');
+  const items = [
+    { label: 'Total cases', val: fInt(c.cases), d: delta(c.cases, p && p.cases) },
+    { label: 'Incidence / 100,000', val: f1(c.ir), d: delta(c.ir, p && p.ir) },
+    { label: 'Deaths', val: fInt(c.deaths), d: delta(c.deaths, p && p.deaths) },
+    { label: 'Case fatality', val: c.cfr != null ? f1(c.cfr) + '%' : '\u2014', d: delta(c.cfrRaw, p && p.cfrRaw) },
+    { label: 'Provinces above threshold', val: fInt(AGG.alerts.length),
+      d: { txt: 'of ' + AGG.provs.length + ' in filter' + (AGG.multiYear ? ', ' + AGG.curYear + ' only' : ''),
+           cls: 'flat', arrow: '' },
+      alert: AGG.alerts.length > 0 }
+  ];
+  document.getElementById('kpis').innerHTML = items.map(i =>
+    '<div class="kpi ' + (i.alert ? 'is-alert' : '') + '">' +
+      '<div class="k-label">' + i.label + '</div>' +
+      '<div class="k-val">' + i.val + '</div>' +
+      '<div class="k-delta ' + i.d.cls + '"><span>' + i.d.arrow + '</span><span>' + i.d.txt + '</span></div>' +
+      '<div class="k-window">' + win + '</div>' +
+    '</div>').join('');
+}
+
+/* ---------- epidemic curve ---------- */
+function renderCurve() {
+  const labels = AGG.monthly.map(x => mName(x.m));
+  const cur = AGG.monthly.map(x => x.cases == null ? null : metricVal(x));
+
+  /* prior-year band: min / max / median across baseline years, same province filter */
+  const bandMin = [], bandMax = [], bandMed = [];
+  AGG.monthly.forEach(x => {
+    const vals = [];
+    AGG.baselineYears.forEach(y => {
+      const sub = RAW.cases.filter(r => r.year === y && r.month === x.m && AGG.provs.indexOf(r.prov) >= 0);
+      if (sub.length) { const s = summarise(sub); vals.push(STATE.metric === 'rate' ? s.ir : s.cases); }
+    });
+    if (!vals.length) { bandMin.push(null); bandMax.push(null); bandMed.push(null); return; }
+    vals.sort((a, b) => a - b);
+    bandMin.push(vals[0]); bandMax.push(vals[vals.length - 1]);
+    bandMed.push(vals.length % 2 ? vals[(vals.length - 1) / 2] : (vals[vals.length / 2 - 1] + vals[vals.length / 2]) / 2);
+  });
+
+  const provIdx = AGG.monthly.reduce((acc, x, i) => x.provisional ? i : acc, -1);
+  const data = {
+    labels: labels,
+    datasets: [
+      { label: 'Prior-year maximum', data: bandMax, borderColor: 'transparent',
+        backgroundColor: 'rgba(20,100,111,.09)', pointRadius: 0, fill: false, order: 4, spanGaps: false },
+      { label: 'Prior-year range', data: bandMin, borderColor: 'transparent',
+        backgroundColor: 'rgba(20,100,111,.09)', pointRadius: 0, fill: '-1', order: 4, spanGaps: false },
+      { label: 'Prior-year median', data: bandMed, borderColor: '#8FB3B6', borderWidth: 1.5,
+        borderDash: [4, 3], pointRadius: 0, fill: false, tension: .25, order: 3, spanGaps: false },
+      { label: AGG.yrs.join(', '), data: cur, borderColor: C_ACCENT, borderWidth: 2.2,
+        backgroundColor: C_ACCENT, pointRadius: 3, pointHoverRadius: 5, fill: false, tension: .22,
+        order: 1, spanGaps: false,
+        segment: { borderDash: ctx => (provIdx > 0 && ctx.p1DataIndex === provIdx) ? [5, 4] : undefined },
+        pointStyle: ctx => (ctx.dataIndex === provIdx) ? 'rectRot' : 'circle' }
+    ]
+  };
+
+  const opts = baseOpts({
+    plugins: {
+      legend: Object.assign(LEGEND(), { labels: Object.assign({}, LEGEND().labels,
+        { filter: it => it.text !== 'Prior-year maximum' }) }),
+      tooltip: Object.assign({}, TIP, { callbacks: {
+        title: items => {
+          const x = AGG.monthly[items[0].dataIndex];
+          return mName(x.m) + (x.provisional ? '  \u00b7  provisional' : '');
+        },
+        label: item => {
+          const x = AGG.monthly[item.dataIndex];
+          if (item.datasetIndex !== 3) return item.dataset.label + ': ' + metricFmt(item.parsed.y);
+          if (x.cases == null) return 'Not reported';
+          const cm = AGG.cmpMonthly[x.m];
+          const out = [
+            'Cases ' + fInt(x.cases),
+            'Deaths ' + fInt(x.deaths),
+            'IR ' + f1(x.ir) + ' / 100k',
+            'CFR ' + (x.cases >= MIN_CASES_FOR_CFR ? f1(x.deaths / x.cases * 100) + '%'
+                                                   : 'suppressed (<' + MIN_CASES_FOR_CFR + ' cases)'),
+            'Reporting ' + x.reporting + '/' + x.expected + ' provinces'
+          ];
+          if (cm && cm.cases > 0) out.push('vs ' + AGG.cmpYear + ': ' + fPct((x.cases - cm.cases) / cm.cases * 100));
+          return out;
+        }
+      } })
+    },
+    scales: { x: AX_X, y: axY(metricLabel()) }
+  });
+  draw('curve', 'c-curve', 'line', data, opts);
+
+  /* title states the finding, not the field */
+  const c = AGG.cur, p = AGG.cmp;
+  let t = metricLabel() + ', ' + AGG.windowTxt + ' ' + AGG.yrs.join(', ');
+  if (AGG.cmpComparable && p && p.cases > 0) {
+    const pct = (c.cases - p.cases) / p.cases * 100;
+    t = 'Cases ' + Math.abs(pct).toFixed(0) + '% ' + (pct >= 0 ? 'above' : 'below') +
+        ' ' + AGG.cmpYear + ' pace (' + AGG.windowTxt + ')';
+  }
+  document.getElementById('curve-title').textContent = t;
+
+  const gapMonths = AGG.monthly.filter(x => x.cases == null && x.due).length;
+  const futureMonths = AGG.monthly.filter(x => !x.due).length;
+  const b0 = AGG.baselineYears[0], b1 = AGG.baselineYears[AGG.baselineYears.length - 1];
+  document.getElementById('curve-note').innerHTML =
+    (AGG.baselineYears.length
+      ? 'Shaded band is the range across ' + AGG.baselineYears.length + ' prior years (' + b0 + '\u2013' + b1 + '), dashed line the median. '
+      : 'No prior years available for a comparison band. ') +
+    (gapMonths ? '<b>The line breaks at ' + gapMonths + ' month' + (gapMonths === 1 ? '' : 's') +
+       ' where no province in the filter reported \u2014 those are gaps, not zeros.</b> ' : '') +
+    (futureMonths ? 'The last ' + futureMonths + ' month' + (futureMonths === 1 ? '' : 's') +
+       ' on the axis are not yet due for reporting, which is a different thing from a missed report. ' : '') +
+    (AGG.truncated ? 'Slider is set to ' + rangeLabel(STATE.filters.monthRange[0], STATE.filters.monthRange[1]) +
+       ', but data exists only for ' + AGG.windowTxt + '; every comparison uses ' + AGG.windowTxt + '. ' : '') +
+    (AGG.yrs.indexOf(DIM.latestYear) >= 0
+      ? 'The final point (' + mName(DIM.latestMonth) + ' ' + DIM.latestYear + ') is dashed because it is subject to reporting lag.'
+      : '');
+}
+
+/* ---------- completeness bar ---------- */
+function renderCompleteness() {
+  /* Only months that are actually due appear here. Charting Aug-Dec 2026 as
+     0/25 would invent a reporting failure out of the calendar. */
+  const due = AGG.monthly.filter(x => x.due);
+  const maxExp = due.length ? Math.max.apply(null, due.map(x => x.expected)) : AGG.provs.length;
+  const cols = due.map(x => {
+    const f = x.expected ? x.reporting / x.expected : 0;
+    return f === 1 ? '#37888E' : f >= .8 ? '#93C8C6' : f > 0 ? '#D9B7B1' : '#E3E9E9';
+  });
+  const data = { labels: due.map(x => mName(x.m)),
+    datasets: [{ data: due.map(x => x.reporting), backgroundColor: cols, borderRadius: 1, barPercentage: .78 }] };
+  const opts = baseOpts({
+    plugins: { legend: { display: false }, tooltip: Object.assign({}, TIP, { callbacks: {
+      title: it => mName(due[it[0].dataIndex].m),
+      label: it => {
+        const x = due[it.dataIndex];
+        const out = [x.reporting + ' of ' + x.expected + ' province-month reports received'];
+        if (x.notReporting.length && x.notReporting.length <= 8) out.push('Missing: ' + x.notReporting.join(', '));
+        else if (x.notReporting.length) out.push('Missing: ' + x.notReporting.length + ' provinces');
+        return out;
+      }
+    } }) },
+    scales: { x: AX_X, y: Object.assign(axY(), { suggestedMax: maxExp,
+      ticks: { color: C_MUTED, stepSize: Math.max(1, Math.round(maxExp / 5)),
+               font: { family: 'IBM Plex Mono', size: 10.5 } } }) }
+  });
+  draw('complete', 'c-complete', 'bar', data, opts);
+
+  const worst = due.filter(x => x.reporting < x.expected).sort((a, b) => (a.reporting / a.expected) - (b.reporting / b.expected))[0];
+  const skipped = AGG.monthly.length - due.length;
+  document.getElementById('complete-title').textContent = worst
+    ? 'Reporting incomplete \u2014 ' + mName(worst.m) + ' lowest at ' + worst.reporting + ' of ' + worst.expected
+    : 'Every expected report received across ' + due.length + ' month' + (due.length === 1 ? '' : 's');
+  document.getElementById('complete-sub').textContent = skipped
+    ? mName(AGG.monthly[due.length] ? AGG.monthly[due.length].m : 12) + ' onward is not yet due and is left off this chart.'
+    : '';
+}
+
+/* ---------- choropleth ---------- */
+let BREAKS = [];
+function classBreaks(values) {
+  const v = values.filter(x => x != null && isFinite(x)).sort((a, b) => a - b);
+  if (!v.length) return [0, 0, 0, 0, 0, 0];
+  const q = p => v[Math.min(v.length - 1, Math.floor(p * (v.length - 1)))];
+  return [q(1 / 7), q(2 / 7), q(3 / 7), q(4 / 7), q(5 / 7), q(6 / 7)];
+}
+function rampColor(v, breaks) {
+  const b = breaks || BREAKS;
+  if (v == null) return C_GREY;
+  for (let i = 0; i < b.length; i++) if (v <= b[i]) return RAMP[i];
+  return RAMP[6];
+}
+
+function renderMap() {
+  if (!MAP) {
+    MAP = L.map('map', { zoomControl: true, scrollWheelZoom: false });
+    MAP.attributionControl.setPrefix(false);
+    MAP.attributionControl.addAttribution('Boundaries: geoBoundaries ADM1 (CC BY 4.0)');
+    GEOLAYER = L.geoJSON(RAW.geo, {
+      style: () => ({ weight: .8, color: '#FFFFFF', fillOpacity: 1, fillColor: C_GREY }),
+      onEachFeature: (f, layer) => {
+        layer.on('click', () => toggleProvince(f.properties.__key));
+        layer.on('mouseover', () => layer.setStyle({ weight: 2.2, color: C_INK }));
+        layer.on('mouseout', () => {
+          const o = AGG.byProv[f.properties.__key];
+          layer.setStyle({ weight: (o && o.breach) ? 2 : .8, color: (o && o.breach) ? C_ALERT : '#FFFFFF' });
+        });
+      }
+    }).addTo(MAP);
+    MAP.fitBounds(GEOLAYER.getBounds(), { padding: [8, 8] });
+  }
+
+  const shown = AGG.provs;
+  BREAKS = classBreaks(shown.map(p => AGG.byProv[p]).filter(o => o && !o.unstable).map(o => metricVal(o)));
+
+  GEOLAYER.eachLayer(layer => {
+    const name = layer.feature.properties.__key;
+    const o = AGG.byProv[name];
+    const inFilter = shown.indexOf(name) >= 0;
+    let fill = C_GREY, op = 1;
+    if (!inFilter) { fill = '#F0F3F3'; op = .5; }
+    else if (!o || !o.reported || o.unstable) fill = C_GREY;   /* RULE 5 */
+    else fill = rampColor(metricVal(o));
+    layer.setStyle({ fillColor: fill, fillOpacity: op,
+                     weight: (o && o.breach) ? 2 : .8,
+                     color: (o && o.breach) ? C_ALERT : '#FFFFFF' });
+
+    let tip;
+    if (!inFilter) tip = '<b>' + name + '</b><br>Not in the current province filter';
+    else if (!o || !o.reported) tip = '<b>' + name + '</b><br>Not reported in this window';
+    else {
+      const rows = [
+        'Cases ' + fInt(o.cases), 'Deaths ' + fInt(o.deaths),
+        'IR ' + f1(o.ir) + ' / 100,000',
+        'CFR ' + (o.cfr != null ? f1(o.cfr) + '%' : 'suppressed (<' + MIN_CASES_FOR_CFR + ' cases)'),
+        'Population ' + fInt(o.pop)
+      ];
+      if (o.deltaPct != null) rows.push('vs ' + AGG.cmpYear + ' ' + fPct(o.deltaPct) +
+        ' (' + (o.deltaAbs > 0 ? '+' : '') + fInt(o.deltaAbs) + ' cases)');
+      if (o.unstable) rows.push('<i>Fewer than ' + MIN_CASES_FOR_RATE + ' cases \u2014 rate not shown</i>');
+      if (o.breach) rows.push('<b style="color:#B33A2B">Above endemic threshold (' + fInt(o.threshold) + ')</b>');
+      tip = '<b>' + name + '</b><br>' + rows.join('<br>');
+    }
+    layer.unbindTooltip();
+    layer.bindTooltip(tip, { sticky: true });
+  });
+
+  const unit = STATE.metric === 'rate' ? 'per 100,000' : 'cases';
+  document.getElementById('map-title').textContent =
+    (STATE.metric === 'rate' ? 'Incidence' : 'Case count') + ' by province, ' + AGG.windowTxt + ' ' + AGG.yrs.join(', ');
+  document.getElementById('map-legend').innerHTML =
+    '<span class="ramp">' + RAMP.map(c => '<i style="background:' + c + '"></i>').join('') + '</span>' +
+    '<span class="ramp-ends">low \u2192 high ' + unit + '</span>' +
+    '<span class="legend-key"><i style="background:' + C_GREY + '"></i> insufficient cases for stable rate</span>' +
+    '<span class="legend-key"><i style="background:#fff;border:2px solid ' + C_ALERT + '"></i> above endemic threshold</span>';
+}
+
+/* ---------- top 10 ---------- */
+function renderTop10() {
+  const list = AGG.provs.map(p => AGG.byProv[p]).filter(o => o.reported)
+    .sort((a, b) => (metricVal(b) || 0) - (metricVal(a) || 0)).slice(0, 10);
+  const data = {
+    labels: list.map(o => o.prov),
+    datasets: [{ data: list.map(o => metricVal(o)),
+      backgroundColor: list.map(o => o.breach ? C_ALERT : (o.unstable ? C_GREY : rampColor(metricVal(o)))),
+      borderRadius: 2, barPercentage: .8 }]
+  };
+  const opts = baseOpts({
+    indexAxis: 'y',
+    plugins: { legend: { display: false }, tooltip: Object.assign({}, TIP, { callbacks: {
+      label: it => {
+        const o = list[it.dataIndex];
+        const out = ['IR ' + f1(o.ir) + ' / 100k', 'Cases ' + fInt(o.cases), 'Deaths ' + fInt(o.deaths)];
+        if (o.deltaPct != null) out.push('vs ' + AGG.cmpYear + ' ' + fPct(o.deltaPct) +
+          ' (' + (o.deltaAbs > 0 ? '+' : '') + fInt(o.deltaAbs) + ')');
+        if (o.unstable) out.push('Under ' + MIN_CASES_FOR_RATE + ' cases \u2014 unstable rate');
+        if (o.breach) out.push('Above endemic threshold');
+        return out;
+      }
+    } }) },
+    scales: {
+      x: Object.assign(axY(metricLabel()), {}),
+      y: { grid: { display: false }, border: { color: C_HAIR },
+           ticks: { color: C_INK, font: { family: 'Archivo', size: 10.5 },
+             callback: function (v) {
+               const o = list[v]; if (!o) return '';
+               const d = o.deltaPct == null ? '' :
+                 '  ' + (o.deltaPct > 0 ? '\u25B2' : o.deltaPct < 0 ? '\u25BC' : '\u25A0') + Math.abs(o.deltaPct).toFixed(0) + '%';
+               const primary = STATE.metric === 'rate' ? f1(o.ir) : fInt(o.cases);
+               return o.prov + '  ' + primary + ' (' + fInt(o.cases) + ' cases)' + d;
+             } } }
+    }
+  });
+  draw('top10', 'c-top10', 'bar', data, opts);
+
+  document.getElementById('top10-title').textContent =
+    'Top ' + list.length + ' provinces by ' + (STATE.metric === 'rate' ? 'incidence' : 'case count');
+  document.getElementById('top10-note').innerHTML =
+    'Label shows ' + (STATE.metric === 'rate' ? 'rate, then raw count' : 'count') +
+    ', then the change against ' + (AGG.cmpYear == null ? 'the comparison year' : AGG.cmpYear) +
+    ' over ' + AGG.windowTxt + '. Grey bars carry fewer than ' + MIN_CASES_FOR_RATE +
+    ' cases; red bars are above their own endemic threshold.';
+}
+
+/* ---------- insight panel: computed, never written ---------- */
+function renderInsights() {
+  const out = [];
+  const c = AGG.cur, p = AGG.cmp;
+  const W = AGG.windowTxt + ' ' + AGG.yrs.join(', ');
+  const CW = AGG.windowTxt + ' ' + AGG.cmpYear;
+
+  if (!AGG.yrs.length) {
+    document.getElementById('insight-list').innerHTML =
+      '<li class="flag">No year is selected, so there is nothing to compute. Pick at least one year in the ' +
+      'filter bar, or use <strong>Reset all filters</strong>.</li>';
+    return;
+  }
+
+  if (AGG.cmpYear == null || !AGG.cmp) {
+    out.push({ t: 'No comparison year is selected, or the comparison year holds no rows for ' + AGG.windowTxt +
+      '. Change figures are withheld rather than computed.', flag: true });
+  } else if (!AGG.cmpComparable) {
+    const missing = AGG.monthsWithData.filter(m => !AGG.cmpMonthly[m]);
+    out.push({ t: '<strong>This comparison is not like-for-like.</strong> ' + AGG.cmpYear +
+      ' has no reported data for ' + missing.map(mName).join(', ') + ', which the current selection does have. ' +
+      'Percentage change is withheld rather than computed against an incomplete base.', flag: true });
+  } else {
+    const abs = c.cases - p.cases, pct = p.cases ? abs / p.cases * 100 : null;
+    out.push({ t: '<strong>' + fInt(c.cases) + '</strong> cases in ' + W + ' against <strong>' + fInt(p.cases) +
+      '</strong> in ' + CW + ' \u2014 a change of <span class="num">' + (abs > 0 ? '+' : '') + fInt(abs) +
+      '</span> cases (' + fPct(pct) + ').' });
+  }
+
+  /* matching months is not the same as matching coverage */
+  if (AGG.cmpComparable && AGG.cmpCoverageGap != null && Math.abs(AGG.cmpCoverageGap) > 0) {
+    const g = AGG.cmpCoverageGap;
+    out.push({ t: 'Coverage differs between the two windows: <span class="num">' + fInt(AGG.curPM) +
+      '</span> province-months reported in ' + W + ' against <span class="num">' + fInt(AGG.cmpPM) +
+      '</span> in ' + CW + ' (' + (g > 0 ? '+' : '') + fInt(g) + ')' +
+      (AGG.cmpProvsMissing.length ? '. ' + AGG.cmpProvsMissing.join(', ') +
+        ' reported this period but not the comparison period, so part of the change is reporting, not transmission.'
+        : '. Read the percentage change with that in mind.'), flag: true });
+  }
+
+  const withCmp = AGG.provs.map(x => AGG.byProv[x]).filter(o => o.deltaAbs != null);
+  if (withCmp.length && AGG.cmpComparable) {
+    const byAbs = withCmp.slice().sort((a, b) => b.deltaAbs - a.deltaAbs).slice(0, 3).filter(o => o.deltaAbs > 0);
+    const byPct = withCmp.filter(o => o.deltaPct != null && o.cmpCases >= MIN_CASES_FOR_RATE)
+                         .sort((a, b) => b.deltaPct - a.deltaPct).slice(0, 3).filter(o => o.deltaPct > 0);
+    if (byAbs.length) out.push({ t: 'Largest increases by <strong>volume</strong>: ' +
+      byAbs.map(o => o.prov + ' <span class="num">+' + fInt(o.deltaAbs) + '</span>').join(', ') + '.' });
+    if (byPct.length) out.push({ t: 'Largest increases by <strong>percentage</strong>: ' +
+      byPct.map(o => o.prov + ' <span class="num">' + fPct(o.deltaPct) + '</span> (' +
+        fInt(o.cmpCases) + ' \u2192 ' + fInt(o.cases) + ')').join(', ') +
+      '. This is a different set from the volume leaders and the two should not be read as one list.' });
+    const down = withCmp.filter(o => o.deltaAbs < 0).sort((a, b) => a.deltaAbs - b.deltaAbs);
+    if (down.length) out.push({ t: '<strong>' + down.length + '</strong> province' + (down.length === 1 ? '' : 's') +
+      ' recorded fewer cases than ' + CW + (down.length <= 6
+        ? ': ' + down.map(o => o.prov + ' (' + fInt(o.deltaAbs) + ')').join(', ') + '.'
+        : ', led by ' + down.slice(0, 3).map(o => o.prov).join(', ') + '.') });
+  }
+
+  if (AGG.alerts.length) {
+    out.push({ t: '<strong>' + AGG.alerts.length + '</strong> province' + (AGG.alerts.length === 1 ? '' : 's') +
+      ' above the endemic-channel threshold (historical mean + 2SD over the same months): ' +
+      AGG.alerts.map(p2 => p2 + (AGG.consec[p2] ? ' (' + AGG.consec[p2] + ' consecutive month' +
+        (AGG.consec[p2] === 1 ? '' : 's') + ')' : '')).join(', ') + '.', flag: true });
+  } else {
+    out.push({ t: 'No province exceeds its endemic-channel threshold for ' + AGG.windowTxt +
+      ', among those with at least ' + BASELINE_MIN_YEARS + ' complete baseline years.' });
+  }
+
+  if (AGG.gaps.length) {
+    out.push({ t: '<strong>Probable reporting failure, not absence of transmission:</strong> ' +
+      AGG.gaps.slice(0, 8).map(g => g.prov + ' (' + g.months + ' months, ' + mName(g.from) + '\u2013' + mName(g.to) + ')').join(', ') +
+      (AGG.gaps.length > 8 ? ', and ' + (AGG.gaps.length - 8) + ' more' : '') +
+      '. These months are excluded from every total on this page \u2014 they are not counted as zero.', flag: true });
+  }
+
+  const stable = AGG.provs.map(x => AGG.byProv[x]).filter(o => o.reported && !o.unstable);
+  if (stable.length) {
+    const top = stable.slice().sort((a, b) => b.ir - a.ir)[0];
+    out.push({ t: 'Highest incidence: <strong>' + top.prov + '</strong> at <span class="num">' + f1(top.ir) +
+      '</span> per 100,000, from <span class="num">' + fInt(top.cases) + '</span> cases over ' + fInt(top.pop) +
+      (AGG.multiYear ? ' person-years (population summed across ' + AGG.yrs.length + ' selected years).'
+                     : ' population.') });
+  }
+  const unstable = AGG.provs.map(x => AGG.byProv[x]).filter(o => o.reported && o.unstable);
+  if (unstable.length) out.push({ t: 'Rate withheld for ' +
+    unstable.map(o => o.prov + ' (' + fInt(o.cases) + ' cases)').join(', ') + ' \u2014 below ' + MIN_CASES_FOR_RATE +
+    ' cases, where one or two cases move the rate more than transmission does.' });
+
+  document.getElementById('insight-list').innerHTML =
+    out.map(o => '<li class="' + (o.flag ? 'flag' : '') + '">' + o.t + '</li>').join('');
+}
+/* ---------------------------------------------------------------
+   TAB 2 — trends and comparison
+   --------------------------------------------------------------- */
+function renderYoY() {
+  const shades = ['#D3DEDE','#BDD0D0','#A6C3C4','#8FB6B8','#78A9AC','#5D9BA0','#3F8B93','#1F7580','#4A6A72'];
+  const datasets = AGG.yoy.map((s, i) => ({
+    label: String(s.year), data: s.series, spanGaps: false,
+    borderColor: s.year === AGG.curYear ? C_ACCENT : shades[i % shades.length],
+    borderWidth: s.year === AGG.curYear ? 2.6 : 1.4,
+    pointRadius: s.year === AGG.curYear ? 2.5 : 0, pointHoverRadius: 4,
+    fill: false, tension: .25, order: s.year === AGG.curYear ? 1 : 2
+  }));
+  const opts = baseOpts({
+    plugins: {
+      legend: Object.assign(LEGEND(2), { labels: { boxWidth: 12, boxHeight: 2, padding: 10,
+        font: { family: 'IBM Plex Mono', size: 11 }, color: C_MUTED } }),
+      tooltip: Object.assign({}, TIP, { callbacks: {
+        label: it => it.parsed.y == null ? it.dataset.label + ': not reported'
+                                         : it.dataset.label + ': ' + metricFmt(it.parsed.y) } })
+    },
+    scales: { x: AX_X, y: axY(metricLabel()) }
+  });
+  draw('yoy', 'c-yoy', 'line', { labels: MONTHS, datasets: datasets }, opts);
+
+  const peak = AGG.yoy.map(s => {
+    const vals = s.series.filter(x => x != null);
+    return { y: s.year, v: vals.length ? Math.max.apply(null, vals) : 0 };
+  }).sort((a, b) => b.v - a.v)[0];
+  document.getElementById('yoy-title').textContent =
+    peak.y + ' holds the highest monthly ' + (STATE.metric === 'rate' ? 'incidence' : 'case count') + ' on record';
+}
+
+function renderCumulative() {
+  const years = AGG.yrs.concat(
+    (AGG.cmpYear != null && AGG.yrs.indexOf(AGG.cmpYear) < 0) ? [AGG.cmpYear] : []);
+  const datasets = years.map(y => {
+    let run = 0; const series = [];
+    for (let m = 1; m <= 12; m++) {
+      const sub = RAW.cases.filter(r => r.year === y && r.month === m && AGG.provs.indexOf(r.prov) >= 0);
+      if (!sub.length) { series.push(null); continue; }
+      run += sub.reduce((a, r) => a + r.cases, 0); series.push(run);
+    }
+    const isCur = AGG.yrs.indexOf(y) >= 0;
+    return { label: String(y), data: series, spanGaps: true,
+      borderColor: isCur ? C_ACCENT : '#9DB6B8', borderWidth: isCur ? 2.4 : 1.6,
+      borderDash: isCur ? [] : [5, 4], pointRadius: 0, pointHoverRadius: 4, fill: false, tension: .2 };
+  });
+  const opts = baseOpts({
+    plugins: {
+      legend: Object.assign(LEGEND(2), { labels: { boxWidth: 12, boxHeight: 2, padding: 12,
+        font: { family: 'IBM Plex Mono', size: 11 }, color: C_MUTED } }),
+      tooltip: Object.assign({}, TIP, { callbacks: {
+        label: it => it.dataset.label + ': ' + fInt(it.parsed.y) + ' cumulative cases' } })
+    },
+    scales: { x: AX_X, y: axY('Cumulative cases') }
+  });
+  draw('cumul', 'c-cumul', 'line', { labels: MONTHS, datasets: datasets }, opts);
+
+  document.getElementById('cumul-title').textContent =
+    'Cumulative cases, ' + AGG.yrs.join(', ') + ' against ' + (AGG.cmpYear == null ? '\u2014' : AGG.cmpYear);
+  document.getElementById('cumul-note').textContent =
+    'Counts only, never rates \u2014 a cumulative rate over a partial year is not comparable with a full one. ' +
+    'The running total skips unreported months rather than carrying a flat line through them, so a flat segment ' +
+    'here means no cases were reported, not that no report arrived.';
+}
+
+function renderHeat() {
+  const lo = STATE.filters.monthRange[0], hi = STATE.filters.monthRange[1];
+  const nCols = hi - lo + 1;
+  const el = document.getElementById('heat');
+  el.style.gridTemplateColumns = '150px repeat(' + nCols + ', minmax(30px,1fr))';
+
+  const allVals = [];
+  AGG.heat.forEach(r => r.cells.forEach(c => {
+    if (c.reported) allVals.push(STATE.metric === 'rate' ? c.ir : c.cases);
+  }));
+  const hb = classBreaks(allVals);
+
+  let html = '<div class="hcol"></div>' +
+    Array.from({ length: nCols }, (_, i) => '<div class="hcol">' + mName(lo + i) + '</div>').join('');
+
+  AGG.heat.slice().sort((a, b) => {
+    const tot = row => row.cells.filter(c => c.reported)
+      .reduce((s, c) => s + (STATE.metric === 'rate' ? (c.ir || 0) : c.cases), 0);
+    return tot(b) - tot(a);
+  }).forEach(row => {
+    html += '<div class="hlab">' + row.prov + '</div>';
+    row.cells.forEach(c => {
+      if (!c.reported && !c.due) {
+        html += '<div class="hcell notdue" title="' + row.prov + ' \u00b7 ' + mName(c.m) + ' \u2014 not yet due"></div>';
+      } else if (!c.reported) {
+        html += '<div class="hcell hatch" title="' + row.prov + ' \u00b7 ' + mName(c.m) + ' \u2014 not reported"></div>';
+      } else {
+        const v = STATE.metric === 'rate' ? c.ir : c.cases;
+        const cfr = c.cases >= MIN_CASES_FOR_CFR ? f1(c.deaths / c.cases * 100) + '%' : 'suppressed';
+        const t = row.prov + ' \u00b7 ' + mName(c.m) + '\nCases ' + fInt(c.cases) + ' \u00b7 Deaths ' + fInt(c.deaths) +
+          '\nIR ' + f1(c.ir) + ' / 100k \u00b7 CFR ' + cfr + (c.provisional ? '\nProvisional \u2014 subject to reporting lag' : '');
+        html += '<div class="hcell' + (c.provisional ? ' provisional' : '') + '" style="background:' +
+          rampColor(v, hb) + '" title="' + t + '"></div>';
+      }
+    });
+  });
+  el.innerHTML = html;
+
+  let gapCells = 0, dueCells = 0, notDue = 0;
+  AGG.heat.forEach(r => r.cells.forEach(c => {
+    if (!c.due) { notDue++; return; }
+    dueCells++;
+    if (!c.reported) gapCells++;
+  }));
+  /* With several years selected each cell aggregates them, so "reported" only
+     means at least one of those years reported. Claiming completeness off that
+     would be false, so the title changes to describe the scope instead. */
+  document.getElementById('heat-title').textContent = AGG.multiYear
+    ? (STATE.metric === 'rate' ? 'Incidence' : 'Cases') + ' by province and month, ' +
+      AGG.yrs.length + ' years combined'
+    : (gapCells ? gapCells + ' of ' + dueCells + ' expected province-months carry no report'
+                : 'Every expected province-month reported');
+  document.getElementById('heat-note').textContent =
+    'Cell colour is ' + (STATE.metric === 'rate' ? 'incidence per 100,000' : 'case count') + ' for ' +
+    AGG.yrs.join(', ') + '. Rows sorted by total. Hover any cell for cases, deaths, incidence and case fatality.' +
+    (AGG.multiYear ? ' With more than one year selected each cell sums those years, so a shaded cell means at ' +
+      'least one of them reported \u2014 use the province \u00d7 year matrix on tab 3 to check completeness.' : '') +
+    (notDue ? ' Blank columns on the right are months not yet due for reporting.' : '');
+  document.getElementById('heat-legend').innerHTML =
+    '<span class="ramp">' + RAMP.map(c => '<i style="background:' + c + '"></i>').join('') + '</span>' +
+    '<span class="ramp-ends">low \u2192 high</span>' +
+    '<span class="legend-key"><i class="hatch"></i> not reported</span>' +
+    (notDue ? '<span class="legend-key"><i class="notdue"></i> not yet due</span>' : '');
+}
+
+function renderEndemic() {
+  const data = {
+    labels: AGG.channel.map(c => mName(c.m)),
+    datasets: [
+      { label: 'Threshold (mean + 2SD)', data: AGG.channel.map(c => c.threshold), borderColor: C_ALERT,
+        borderWidth: 1.6, borderDash: [5, 4], pointRadius: 0, fill: false, tension: .2, spanGaps: false },
+      { label: 'Historical mean', data: AGG.channel.map(c => c.mean), borderColor: '#9DB6B8',
+        borderWidth: 1.3, pointRadius: 0, fill: false, tension: .2, spanGaps: false },
+      { label: 'Observed ' + AGG.curYear, data: AGG.channel.map(c => c.observed),
+        borderColor: C_ACCENT, borderWidth: 2.4, fill: false, tension: .2, spanGaps: false,
+        pointRadius: 4, pointHoverRadius: 6,
+        pointBackgroundColor: AGG.channel.map(c => c.breach ? C_ALERT : C_ACCENT),
+        pointBorderColor: AGG.channel.map(c => c.breach ? C_ALERT : C_ACCENT) }
+    ]
+  };
+  const opts = baseOpts({
+    plugins: {
+      legend: LEGEND(2),
+      tooltip: Object.assign({}, TIP, { callbacks: {
+        label: it => it.parsed.y == null ? it.dataset.label + ': not computable'
+                                         : it.dataset.label + ': ' + fInt(it.parsed.y),
+        afterBody: it => {
+          const c = AGG.channel[it[0].dataIndex];
+          const lines = ['Baseline built from ' + c.n + ' prior year' + (c.n === 1 ? '' : 's')];
+          if (c.n < BASELINE_MIN_YEARS) lines.push('Too few years \u2014 treat this threshold as indicative only');
+          if (c.breach) lines.push('ABOVE THRESHOLD');
+          return lines;
+        }
+      } })
+    },
+    scales: { x: AX_X, y: axY('Cases') }
+  });
+  draw('endemic', 'c-endemic', 'line', data, opts);
+
+  const breaches = AGG.channel.filter(c => c.breach);
+  document.getElementById('endemic-title').textContent = breaches.length
+    ? breaches.length + ' month' + (breaches.length === 1 ? '' : 's') + ' above the mean + 2SD threshold: ' +
+      breaches.map(c => mName(c.m)).join(', ')
+    : 'No month above the mean + 2SD threshold';
+  const thin = AGG.channel.filter(c => c.n > 0 && c.n < BASELINE_MIN_YEARS).map(c => mName(c.m));
+  const b0 = AGG.baselineYears[0], b1 = AGG.baselineYears[AGG.baselineYears.length - 1];
+  document.getElementById('endemic-note').innerHTML =
+    'Counts, not rates \u2014 the threshold is defined on counts. ' +
+    (AGG.multiYear ? '<b>The observed line shows ' + AGG.curYear + ' only, not the ' + AGG.yrs.length +
+      ' years selected elsewhere</b> \u2014 a multi-year sum cannot be compared with a single-year threshold. ' : '') +
+    (AGG.baselineYears.length
+      ? 'Baseline is ' + AGG.baselineYears.length + ' prior years (' + b0 + '\u2013' + b1 + '), built only from months ' +
+        'that actually reported, so each month rests on between ' + AGG.channelYearsMin + ' and ' +
+        AGG.channelYearsMax + ' years. '
+      : 'No prior years are available, so no threshold can be computed. ') +
+    (thin.length ? '<b>' + thin.join(', ') + ' rest' + (thin.length === 1 ? 's' : '') + ' on fewer than ' +
+      BASELINE_MIN_YEARS + ' years \u2014 treat the threshold there as indicative only.</b>' : '');
+}
+
+function renderSeason() {
+  const cur = Array.from({ length: 12 }, (_, i) => {
+    const rec = AGG.monthly.filter(x => x.m === i + 1)[0];
+    return rec ? rec.cases : null;
+  });
+  const y0 = DIM.years[0], y1 = DIM.years[DIM.years.length - 1];
+  const data = {
+    labels: MONTHS,
+    datasets: [
+      { type: 'bar', label: 'Mean, ' + y0 + '\u2013' + y1, data: AGG.season.map(s => s.mean),
+        backgroundColor: '#CFE2E1', borderRadius: 2, order: 2 },
+      { type: 'line', label: AGG.yrs.join(', '), data: cur, borderColor: C_ACCENT, borderWidth: 2.4,
+        pointRadius: 3, fill: false, tension: .25, spanGaps: false, order: 1 }
+    ]
+  };
+  const opts = baseOpts({
+    plugins: {
+      legend: LEGEND(8),
+      tooltip: Object.assign({}, TIP, { callbacks: {
+        label: it => it.parsed.y == null ? it.dataset.label + ': not reported'
+                                         : it.dataset.label + ': ' + fInt(it.parsed.y) + ' cases',
+        afterBody: it => ['Mean built from ' + AGG.season[it[0].dataIndex].n + ' of ' + DIM.years.length + ' years']
+      } })
+    },
+    scales: { x: AX_X, y: axY('Cases') }
+  });
+  draw('season', 'c-season', 'bar', data, opts);
+
+  const hMean = AGG.season.reduce((a, b) => (b.mean != null && (!a || b.mean > a.mean)) ? b : a, null);
+  const reported = AGG.monthly.filter(x => x.cases != null);
+  const hCur = reported.slice().sort((a, b) => b.cases - a.cases)[0];
+  const lastMonth = reported.length ? reported[reported.length - 1].m : null;
+  /* If the highest month so far is also the last month with data, the series is
+     still climbing as far as we can tell. Calling that a peak would be wrong. */
+  const peakUnresolved = hCur && lastMonth != null && hCur.m === lastMonth && AGG.monthly.some(x => !x.due);
+
+  let verdict = 'Peak month not determinable from the current filter';
+  if (hMean && hCur && peakUnresolved) {
+    verdict = AGG.yrs.join(', ') + ' is still rising at ' + mName(hCur.m) +
+      ' \u2014 the peak has not been observed yet. The ' + y0 + '\u2013' + y1 + ' average peaks in ' + mName(hMean.m) + '.';
+  } else if (hMean && hCur) {
+    const d = hCur.m - hMean.m;
+    verdict = d === 0
+      ? AGG.yrs.join(', ') + ' peaks in ' + mName(hCur.m) + ', on the historical schedule'
+      : AGG.yrs.join(', ') + ' peaks in ' + mName(hCur.m) + ', ' + Math.abs(d) + ' month' +
+        (Math.abs(d) === 1 ? '' : 's') + ' ' + (d < 0 ? 'earlier' : 'later') + ' than the ' + y0 + '\u2013' + y1 +
+        ' peak in ' + mName(hMean.m);
+  }
+  document.getElementById('season-title').textContent = verdict;
+  document.getElementById('season-note').textContent =
+    'Counts. The current-year line stops at the last reported month, so where the selection is a partial year ' +
+    'the highest month so far is not necessarily the peak \u2014 this title says which of the two it is.';
+}
+
+function renderCFR() {
+  const list = AGG.provs.map(p => AGG.byProv[p]).filter(o => o.reported && o.cfr != null)
+    .sort((a, b) => b.cfr - a.cfr);
+  const suppressed = AGG.provs.map(p => AGG.byProv[p]).filter(o => o.reported && o.cfr == null);
+  const data = {
+    labels: list.map(o => o.prov),
+    datasets: [{ data: list.map(o => o.cfr),
+      backgroundColor: list.map(o => o.cfr >= 1 ? C_ALERT : C_ACCENT), borderRadius: 2, barPercentage: .8 }]
+  };
+  const opts = baseOpts({
+    plugins: { legend: { display: false }, tooltip: Object.assign({}, TIP, { callbacks: {
+      label: it => { const o = list[it.dataIndex];
+        return ['CFR ' + f1(o.cfr) + '%', fInt(o.deaths) + ' deaths / ' + fInt(o.cases) + ' cases']; } } }) },
+    scales: {
+      x: { grid: { display: false }, border: { color: C_HAIR },
+           ticks: { color: C_MUTED, font: { family: 'Archivo', size: 10 }, maxRotation: 60, minRotation: 60 } },
+      y: axY('Case fatality %')
+    }
+  });
+  draw('cfr', 'c-cfr', 'bar', data, opts);
+
+  document.getElementById('cfr-title').textContent = list.length
+    ? 'Case fatality, ' + list.length + ' province' + (list.length === 1 ? '' : 's') + ' with enough cases to report it'
+    : 'No province has enough cases to report case fatality in this window';
+  document.getElementById('cfr-note').innerHTML =
+    'Suppressed below ' + MIN_CASES_FOR_CFR + ' cases, where a single death moves the rate by whole percentage points. ' +
+    'Red marks 1% or above, which is high for dengue and worth checking before it is reported. ' +
+    (suppressed.length ? '<b>' + suppressed.length + ' province' + (suppressed.length === 1 ? '' : 's') +
+      ' suppressed:</b> ' + suppressed.map(o => o.prov + ' (' + fInt(o.cases) + ' cases, ' +
+      fInt(o.deaths) + ' deaths)').join(', ') + '.' : '');
+}
+
+/* ---------------------------------------------------------------
+   TAB 3 — age, severity, data quality
+   Visuals 12 and 13 are national and annual. They are greyed and
+   explained under a province or month filter rather than silently
+   showing national figures that look filtered.
+   --------------------------------------------------------------- */
+function ageLocked() {
+  return STATE.filters.provinces.length > 0 ||
+         STATE.filters.monthRange[0] !== 1 || STATE.filters.monthRange[1] !== 12 ||
+         STATE.filters.years.indexOf(DIM.latestYear) < 0;
+}
+function lockReason() {
+  const r = [];
+  if (STATE.filters.provinces.length) r.push('a province filter (' + STATE.filters.provinces.length + ' selected)');
+  if (STATE.filters.monthRange[0] !== 1 || STATE.filters.monthRange[1] !== 12)
+    r.push('a month range (' + rangeLabel(STATE.filters.monthRange[0], STATE.filters.monthRange[1]) + ')');
+  if (STATE.filters.years.indexOf(DIM.latestYear) < 0) r.push('a year selection that excludes ' + DIM.latestYear);
+  return 'The source reports age and severity once a year, at national level. It cannot be broken down by province ' +
+    'or month, so this chart stays on national ' + DIM.latestYear + ' year-to-date and does not respond to ' +
+    r.join(', ') + '. Clear ' + (r.length > 1 ? 'those filters' : 'that filter') +
+    ' to read it alongside the rest of the dashboard.';
+}
+
+function renderAge() {
+  const A = AGG.ages;
+  const locked = ageLocked();
+  document.getElementById('p-age').classList.toggle('is-locked', locked);
+  document.getElementById('p-sev').classList.toggle('is-locked', locked);
+  document.getElementById('age-lock').textContent = lockReason();
+  document.getElementById('sev-lock').textContent = lockReason();
+  if (!A.length) { document.getElementById('age-title').textContent = 'No age-group table for ' + DIM.latestYear; return; }
+
+  const data = {
+    labels: A.map(a => a.group),
+    datasets: [
+      { type: 'bar', label: 'Cases', data: A.map(a => a.cases), backgroundColor: RAMP[4],
+        borderRadius: 2, yAxisID: 'y', order: 2 },
+      { type: 'line', label: 'Case fatality %', data: A.map(a => a.cases ? a.deaths / a.cases * 100 : null),
+        borderColor: C_ALERT, borderWidth: 2, pointRadius: 4, fill: false, yAxisID: 'y1', order: 1, tension: .2 }
+    ]
+  };
+  const opts = baseOpts({
+    plugins: {
+      legend: LEGEND(8),
+      tooltip: Object.assign({}, TIP, { callbacks: {
+        afterBody: it => { const a = A[it[0].dataIndex];
+          return [fInt(a.deaths) + ' deaths', 'DF ' + fInt(a.DF) + ' \u00b7 DHF ' + fInt(a.DHF) + ' \u00b7 DSS ' + fInt(a.DSS)]; }
+      } })
+    },
+    scales: {
+      x: { grid: { display: false }, border: { color: C_HAIR },
+           ticks: { color: C_INK, font: { family: 'Archivo', size: 11 } } },
+      y: axY('Cases'),
+      y1: { position: 'right', grid: { display: false }, border: { display: false }, beginAtZero: true,
+            title: { display: true, text: 'CFR %', color: C_ALERT, font: { family: 'Archivo', size: 11 } },
+            ticks: { color: C_ALERT, font: { family: 'IBM Plex Mono', size: 10.5 } } }
+    }
+  });
+  draw('age', 'c-age', 'bar', data, opts);
+
+  const peak = A.slice().sort((a, b) => b.cases - a.cases)[0];
+  const worst = A.slice().sort((a, b) => (b.deaths / b.cases) - (a.deaths / a.cases))[0];
+  const tc = A.reduce((s, a) => s + a.cases, 0), td = A.reduce((s, a) => s + a.deaths, 0);
+  document.getElementById('age-title').textContent = (peak.group === worst.group)
+    ? peak.group + ' carries both the most cases and the highest case fatality'
+    : peak.group + ' carries the most cases; ' + worst.group + ' the highest case fatality';
+  document.getElementById('age-note').innerHTML =
+    '<b>' + DIM.latestYear + ' year-to-date, national, not filterable by province or month</b> \u2014 the source ' +
+    'reports this table annually at national level only. Totals ' + fInt(tc) + ' cases and ' + fInt(td) +
+    ' deaths, which reconciles exactly against the province table for the same period.';
+}
+
+function renderSeverity() {
+  const A = AGG.ages;
+  if (!A.length) return;
+  const pct = (a, k) => { const t = a.DF + a.DHF + a.DSS; return t ? a[k] / t * 100 : null; };
+  const data = {
+    labels: A.map(a => a.group),
+    datasets: [
+      { label: 'DF (dengue fever)', data: A.map(a => pct(a, 'DF')), backgroundColor: RAMP[2], borderRadius: 1 },
+      { label: 'DHF (haemorrhagic)', data: A.map(a => pct(a, 'DHF')), backgroundColor: RAMP[5], borderRadius: 1 },
+      { label: 'DSS (shock syndrome)', data: A.map(a => pct(a, 'DSS')), backgroundColor: C_ALERT, borderRadius: 1 }
+    ]
+  };
+  const opts = baseOpts({
+    plugins: {
+      legend: LEGEND(10),
+      tooltip: Object.assign({}, TIP, { callbacks: {
+        label: it => { const a = A[it.dataIndex]; const k = ['DF', 'DHF', 'DSS'][it.datasetIndex];
+          return k + ' ' + f1(it.parsed.y) + '% (' + fInt(a[k]) + ' cases)'; } } })
+    },
+    scales: {
+      x: { stacked: true, grid: { display: false }, border: { color: C_HAIR },
+           ticks: { color: C_INK, font: { family: 'Archivo', size: 11 } } },
+      y: Object.assign(axY('Share of classified cases %'), { stacked: true, max: 100 })
+    }
+  });
+  draw('sev', 'c-sev', 'bar', data, opts);
+
+  const worst = A.slice().sort((a, b) => pct(b, 'DSS') - pct(a, 'DSS'))[0];
+  document.getElementById('sev-title').textContent =
+    'Shock syndrome is most concentrated in ' + worst.group + ' at ' + f1(pct(worst, 'DSS')) + '% of classified cases';
+  document.getElementById('sev-note').innerHTML =
+    '<b>' + DIM.latestYear + ' year-to-date, national, not filterable by province or month.</b> Percentages are of ' +
+    'DF + DHF + DSS, which is the classification total and may differ from the case total in the chart beside it.';
+}
+
+/* ---------- data quality panel ---------- */
+function renderDQ() {
+  let expected = 0;
+  DIM.years.forEach(y => {
+    expected += DIM.provinces.length * (y === DIM.latestYear ? DIM.latestMonth : 12);
+  });
+  const missing = expected - RAW.cases.length;
+
+  const stats = [
+    { v: fInt(RAW.cases.length), l: 'rows loaded', cls: '' },
+    { v: fInt(DIM.provinces.length), l: 'provinces', cls: DIM.provinces.length === 25 ? 'pass' : 'warn' },
+    { v: DIM.years[0] + '\u2013' + DIM.years[DIM.years.length - 1], l: 'year range', cls: '' },
+    { v: fInt(missing), l: 'province-months missing', cls: missing > 0 ? 'warn' : 'pass' },
+    { v: fInt(DQ.exampleDropped), l: 'template rows dropped', cls: DQ.exampleDropped > 0 ? 'warn' : 'pass' },
+    { v: fInt(DQ.joinFailures.length), l: 'population join failures', cls: DQ.joinFailures.length ? 'warn' : 'pass' },
+    { v: fInt(DQ.dataUnmapped.length), l: 'provinces with no polygon', cls: DQ.dataUnmapped.length ? 'warn' : 'pass' },
+    { v: fInt(DQ.popAnomalies.length), l: 'population anomalies', cls: DQ.popAnomalies.length ? 'warn' : 'pass' }
+  ];
+  document.getElementById('dq-stats').innerHTML = stats.map(s =>
+    '<div class="dq-stat ' + s.cls + '"><div class="v">' + s.v + '</div><div class="l">' + s.l + '</div></div>').join('');
+
+  const nat = RAW.cases.filter(r => r.year === DIM.latestYear);
+  const natC = nat.reduce((a, r) => a + r.cases, 0), natD = nat.reduce((a, r) => a + r.deaths, 0);
+  const agC = RAW.ages.filter(a => a.year === DIM.latestYear).reduce((s, a) => s + a.cases, 0);
+
+  const co = [];
+  if (DQ.exampleDropped) co.push({ warn: false, html:
+    '<b>' + DQ.exampleDropped + ' placeholder row removed before anything was calculated.</b> The workbook carries ' +
+    'a template row under the province name EXAMPLE (Jun 2026, 815 cases, 1 death) with no population match. ' +
+    'National ' + DIM.latestYear + ' totals read <b>' + fInt(natC) + ' cases and ' + fInt(natD) + ' deaths</b> after removal' +
+    (agC ? ', which reconciles exactly against the age-group table (' + fInt(agC) + ' cases)' : '') +
+    '. If a national figure ever reads 41,730, the filter has failed.' });
+  if (DQ.joinFailures.length) co.push({ warn: true, html:
+    '<b>Population join failed for:</b> ' + DQ.joinFailures.join(', ') +
+    '. Incidence cannot be computed for these provinces and they will not colour on the map.' });
+  else co.push({ warn: false, html:
+    '<b>All ' + DIM.provinces.length + ' provinces join cleanly to the population table</b> across ' +
+    DIM.years[0] + '\u2013' + DIM.years[DIM.years.length - 1] + '. No silent drop-outs from the map.' });
+  if (DQ.dataUnmapped.length) co.push({ warn: true, html:
+    '<b>No polygon found for:</b> ' + DQ.dataUnmapped.join(', ') + '. These provinces are in the data but will not draw.' });
+  if (DQ.geoUnmatched.length) co.push({ warn: true, html:
+    '<b>Polygons with no matching data:</b> ' + DQ.geoUnmatched.join(', ') + '. Check the normalisation map in the script.' });
+  if (DQ.popAnomalies.length) co.push({ warn: true, html:
+    '<b>Population does not change between consecutive years:</b> ' +
+    DQ.popAnomalies.map(a => a.prov + ' ' + a.prev + ' and ' + a.year + ' are both ' + fInt(a.value)).join('; ') +
+    '. Every other province grows year on year, so this reads as a copied cell rather than a real projection. ' +
+    'Any incidence figure for that province-year rests on a denominator that is very likely too low. ' +
+    'Worth fixing in Population_by_Province_Year before the next refresh.' });
+  co.push({ warn: false, html:
+    '<b>2018 and 2019 population is back-extrapolated, not observed.</b> The NIS Population Projection 2020\u20132033 ' +
+    'does not cover those years; each province was projected backwards on its own growth rate. Rates for 2018\u20132019 ' +
+    'are estimates and should carry that label wherever they leave this dashboard.' });
+  co.push({ warn: false, html:
+    '<b>' + mName(DIM.latestMonth) + ' ' + DIM.latestYear + ' is provisional.</b> It is the most recent reporting month ' +
+    'and remains subject to lag; it is drawn dashed on the epidemic curve and should not be read as a completed month.' });
+  document.getElementById('dq-callouts').innerHTML =
+    co.map(c => '<div class="callout ' + (c.warn ? 'warn' : '') + '">' + c.html + '</div>').join('');
+
+  /* completeness matrix, province x year */
+  const el = document.getElementById('dq-heat');
+  el.style.gridTemplateColumns = '150px repeat(' + DIM.years.length + ', minmax(34px,1fr))';
+  let html = '<div class="hcol"></div>' + DIM.years.map(y => '<div class="hcol">' + y + '</div>').join('');
+  DIM.provinces.forEach(p => {
+    html += '<div class="hlab">' + p + '</div>';
+    DIM.years.forEach(y => {
+      const maxM = y === DIM.latestYear ? DIM.latestMonth : 12;
+      let n = 0;
+      for (let m = 1; m <= maxM; m++) if (IDX[p + '|' + y + '|' + m]) n++;
+      const f = n / maxM;
+      const c = f === 1 ? RAMP[5] : f >= .75 ? RAMP[3] : f >= .5 ? RAMP[2] : f > 0 ? RAMP[1] : null;
+      html += c
+        ? '<div class="hcell" style="background:' + c + '" title="' + p + ' ' + y + ': ' + n + ' of ' + maxM + ' months reported"></div>'
+        : '<div class="hcell hatch" title="' + p + ' ' + y + ': no months reported"></div>';
+    });
+  });
+  el.innerHTML = html;
+}
+/* ---------------------------------------------------------------
+   Detail table
+   --------------------------------------------------------------- */
+const COLS = [
+  { k: 'prov',   t: 'Province',   n: false },
+  { k: 'year',   t: 'Year',       n: true  },
+  { k: 'month',  t: 'Month',      n: false },
+  { k: 'cases',  t: 'Cases',      n: true  },
+  { k: 'deaths', t: 'Deaths',     n: true  },
+  { k: 'cfr',    t: 'CFR %',      n: true  },
+  { k: 'pop',    t: 'Population', n: true  },
+  { k: 'ir',     t: 'IR / 100k',  n: true  }
+];
+const PAGE = 25;
+
+function tableRows() {
+  return AGG.rows.map(r => ({
+    prov: r.prov, year: r.year, month: r.month, cases: r.cases, deaths: r.deaths,
+    cfr: r.cases >= MIN_CASES_FOR_CFR ? r.deaths / r.cases * 100 : null,
+    pop: r.pop, ir: r.pop ? r.cases / r.pop * 1e5 : null
+  }));
+}
+
+function renderTable() {
+  const rows = tableRows();
+  const col = STATE.sort.col, dir = STATE.sort.dir;
+  rows.sort((a, b) => {
+    const x = a[col], y = b[col];
+    if (x == null && y == null) return 0;
+    if (x == null) return 1;
+    if (y == null) return -1;
+    return (typeof x === 'string' ? x.localeCompare(y) : x - y) * dir;
+  });
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+  if (STATE.page >= pages) STATE.page = pages - 1;
+  if (STATE.page < 0) STATE.page = 0;
+  const slice = rows.slice(STATE.page * PAGE, STATE.page * PAGE + PAGE);
+
+  document.getElementById('detail-head').innerHTML = COLS.map(c =>
+    '<th data-col="' + c.k + '" style="' + (c.n ? 'text-align:right' : '') + '">' + c.t +
+    (col === c.k ? '<span class="sortmark">' + (dir === 1 ? '\u25B2' : '\u25BC') + '</span>' : '') + '</th>').join('');
+
+  document.getElementById('detail-body').innerHTML = slice.map(r =>
+    '<tr><td>' + r.prov + '</td>' +
+    '<td class="n">' + r.year + '</td>' +
+    '<td>' + mName(r.month) + '</td>' +
+    '<td class="n">' + fInt(r.cases) + '</td>' +
+    '<td class="n">' + fInt(r.deaths) + '</td>' +
+    '<td class="n">' + (r.cfr == null ? '\u2014' : f1(r.cfr)) + '</td>' +
+    '<td class="n">' + fInt(r.pop) + '</td>' +
+    '<td class="n">' + (r.ir == null ? '\u2014' : f1(r.ir)) + '</td></tr>').join('');
+
+  document.getElementById('pg-read').textContent = rows.length
+    ? fInt(STATE.page * PAGE + 1) + '\u2013' + fInt(Math.min(rows.length, (STATE.page + 1) * PAGE)) +
+      ' of ' + fInt(rows.length) + ' rows'
+    : 'no rows match the current filter';
+  document.getElementById('pg-prev').disabled = STATE.page === 0;
+  document.getElementById('pg-next').disabled = STATE.page >= pages - 1;
+  document.getElementById('table-note').innerHTML =
+    'Every active filter applied. Click a column header to sort. CFR is blank below ' + MIN_CASES_FOR_CFR +
+    ' cases. Province-months absent from the source are absent here too \u2014 this table never manufactures a zero.';
+}
+
+/* ---------------------------------------------------------------
+   Chips and footers
+   --------------------------------------------------------------- */
+function renderChips() {
+  const el = document.getElementById('chips');
+  const chips = [];
+  const yrs = STATE.filters.years.slice().sort((a, b) => a - b);
+  if (yrs.length && yrs.length !== DIM.years.length)
+    chips.push({ t: 'Year: ' + yrs.join(', '), act: () => { STATE.filters.years = DIM.years.slice(); } });
+  const lo = STATE.filters.monthRange[0], hi = STATE.filters.monthRange[1];
+  if (lo !== 1 || hi !== 12)
+    chips.push({ t: 'Months: ' + rangeLabel(lo, hi), act: () => { STATE.filters.monthRange = [1, 12]; } });
+  STATE.filters.provinces.forEach(p =>
+    chips.push({ t: p, act: () => { STATE.filters.provinces = STATE.filters.provinces.filter(x => x !== p); } }));
+  if (STATE.metric !== 'rate')
+    chips.push({ t: 'Metric: case count', act: () => { STATE.metric = 'rate'; } });
+
+  el.innerHTML = '<span class="chips-lead">Active filters</span>' + (chips.length
+    ? chips.map((c, i) => '<span class="chip">' + c.t + '<button data-chip="' + i + '" aria-label="Remove ' + c.t + '">\u00d7</button></span>').join('')
+    : '<span style="font-size:12px;color:var(--muted)">none \u2014 showing every province, all months, ' + DIM.latestYear + '</span>');
+  Array.prototype.forEach.call(el.querySelectorAll('[data-chip]'), b => {
+    b.onclick = () => { chips[+b.dataset.chip].act(); STATE.page = 0; syncControls(); update(); };
+  });
+}
+
+const EXTRACT_DATE = new Date().toISOString().slice(0, 10);
+
+function renderFooters() {
+  const txt =
+    '<b>Source</b> National DHF Bulletin, Cambodia \u2014 case and death counts, monthly, province level \u00b7 ' +
+    'NIS Population Projection 2020\u20132033, Table 4.27.1 \u2014 denominators \u00b7 ' +
+    'boundaries geoBoundaries ADM1 (CC BY 4.0).<br>' +
+    '<b>Extracted</b> ' + EXTRACT_DATE + ' from Dengue_Master_Data_Entry.xlsx \u00b7 loaded via ' + DQ.source + '.<br>' +
+    '<b>Caveats</b> ' + mName(DIM.latestMonth) + ' ' + DIM.latestYear + ' is provisional and subject to reporting lag. ' +
+    '2018\u20132019 population is back-extrapolated, not observed, so rates for those years are estimates. ' +
+    'Case fatality is suppressed below ' + MIN_CASES_FOR_CFR + ' cases and incidence is greyed below ' +
+    MIN_CASES_FOR_RATE + ' cases. Absent province-months are treated as not reported, never as zero.';
+  ['foot1', 'foot2', 'foot3'].forEach(id => { document.getElementById(id).innerHTML = txt; });
+}
+
+/* ---------------------------------------------------------------
+   update() — the ONLY path from state to pixels
+   --------------------------------------------------------------- */
+function update() {
+  recompute();
+  renderRibbon();
+  renderChips();
+  renderKPIs();
+  renderCurve();
+  renderCompleteness();
+  renderMap();
+  renderTop10();
+  renderInsights();
+  renderYoY();
+  renderCumulative();
+  renderHeat();
+  renderEndemic();
+  renderSeason();
+  renderCFR();
+  renderAge();
+  renderSeverity();
+  renderDQ();
+  renderTable();
+}
+
+/* ---------------------------------------------------------------
+   Controls
+   --------------------------------------------------------------- */
+function toggleProvince(name) {
+  const i = STATE.filters.provinces.indexOf(name);
+  if (i >= 0) STATE.filters.provinces.splice(i, 1); else STATE.filters.provinces.push(name);
+  STATE.page = 0; syncControls(); update();
+}
+
+function buildMulti(btnId, panelId, values, setSel) {
+  const panel = document.getElementById(panelId);
+  panel.innerHTML =
+    '<div class="multi-tools"><button data-all>Select all</button><button data-none>Clear</button></div>' +
+    values.map(v => '<label class="opt"><input type="checkbox" value="' + v + '"> <span>' + v + '</span></label>').join('');
+  const btn = document.getElementById(btnId);
+  btn.onclick = e => {
+    e.stopPropagation();
+    Array.prototype.forEach.call(document.querySelectorAll('.multi-panel'), p => { if (p !== panel) p.classList.remove('open'); });
+    panel.classList.toggle('open');
+    btn.setAttribute('aria-expanded', panel.classList.contains('open'));
+  };
+  panel.onclick = e => e.stopPropagation();
+  panel.querySelector('[data-all]').onclick = () => { setSel(values.slice()); STATE.page = 0; syncControls(); update(); };
+  panel.querySelector('[data-none]').onclick = () => { setSel([]); STATE.page = 0; syncControls(); update(); };
+  Array.prototype.forEach.call(panel.querySelectorAll('input'), inp => {
+    inp.onchange = () => {
+      const sel = Array.prototype.map.call(panel.querySelectorAll('input:checked'),
+        i => (i.value !== '' && !isNaN(+i.value)) ? +i.value : i.value);
+      setSel(sel); STATE.page = 0; syncControls(); update();
+    };
+  });
+}
+
+function syncControls() {
+  const yp = document.getElementById('f-year-panel');
+  Array.prototype.forEach.call(yp.querySelectorAll('input'), i => { i.checked = STATE.filters.years.indexOf(+i.value) >= 0; });
+  const ys = STATE.filters.years.slice().sort((a, b) => a - b);
+  document.getElementById('f-year-txt').textContent =
+    ys.length === 0 ? 'No year selected' :
+    ys.length === DIM.years.length ? 'All years ' + ys[0] + '\u2013' + ys[ys.length - 1] :
+    ys.length <= 3 ? ys.join(', ') : ys.length + ' years selected';
+
+  const pp = document.getElementById('f-prov-panel');
+  Array.prototype.forEach.call(pp.querySelectorAll('input'), i => { i.checked = STATE.filters.provinces.indexOf(i.value) >= 0; });
+  const ps = STATE.filters.provinces;
+  document.getElementById('f-prov-txt').textContent =
+    ps.length === 0 ? 'All ' + DIM.provinces.length + ' provinces' :
+    ps.length === 1 ? ps[0] : ps.length + ' provinces selected';
+
+  const lo = STATE.filters.monthRange[0], hi = STATE.filters.monthRange[1];
+  document.getElementById('m-lo').value = lo;
+  document.getElementById('m-hi').value = hi;
+  document.getElementById('range-read').textContent = rangeLabel(lo, hi);
+  const f = document.getElementById('range-fill');
+  f.style.left = ((lo - 1) / 11 * 100) + '%';
+  f.style.width = ((hi - lo) / 11 * 100) + '%';
+
+  Array.prototype.forEach.call(document.querySelectorAll('#metric-seg button'),
+    b => b.classList.toggle('active', b.dataset.metric === STATE.metric));
+
+  document.getElementById('f-cmp').value = STATE.comparisonYear == null ? '' : STATE.comparisonYear;
+}
+
+function wire() {
+  buildMulti('f-year', 'f-year-panel', DIM.years, v => { STATE.filters.years = v; });
+  buildMulti('f-prov', 'f-prov-panel', DIM.provinces, v => { STATE.filters.provinces = v; });
+  document.addEventListener('click', () =>
+    Array.prototype.forEach.call(document.querySelectorAll('.multi-panel'), p => p.classList.remove('open')));
+
+  /* dual slider, debounced 150ms per spec */
+  let t = null;
+  const onRange = () => {
+    let lo = +document.getElementById('m-lo').value, hi = +document.getElementById('m-hi').value;
+    if (lo > hi) { const s = lo; lo = hi; hi = s; }
+    STATE.filters.monthRange = [lo, hi];
+    document.getElementById('range-read').textContent = rangeLabel(lo, hi);
+    const f = document.getElementById('range-fill');
+    f.style.left = ((lo - 1) / 11 * 100) + '%';
+    f.style.width = ((hi - lo) / 11 * 100) + '%';
+    clearTimeout(t);
+    t = setTimeout(() => { STATE.page = 0; update(); }, 150);
+  };
+  document.getElementById('m-lo').oninput = onRange;
+  document.getElementById('m-hi').oninput = onRange;
+
+  Array.prototype.forEach.call(document.querySelectorAll('#metric-seg button'),
+    b => { b.onclick = () => { STATE.metric = b.dataset.metric; syncControls(); update(); }; });
+
+  const cmp = document.getElementById('f-cmp');
+  cmp.innerHTML = '<option value="">No comparison</option>' +
+    DIM.years.map(y => '<option value="' + y + '">' + y + '</option>').join('');
+  cmp.onchange = () => { STATE.comparisonYear = cmp.value === '' ? null : +cmp.value; update(); };
+
+  document.getElementById('btn-reset').onclick = () => {
+    STATE.filters = { years: [DIM.latestYear], monthRange: [1, 12], provinces: [] };
+    STATE.metric = 'rate';
+    STATE.comparisonYear = DIM.latestYear - 1;
+    STATE.page = 0;
+    STATE.sort = { col: 'cases', dir: -1 };
+    syncControls(); update();
+  };
+
+  Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), b => {
+    b.onclick = () => {
+      Array.prototype.forEach.call(document.querySelectorAll('#tabs button'), x => x.classList.remove('active'));
+      Array.prototype.forEach.call(document.querySelectorAll('.tabpanel'), x => x.classList.remove('active'));
+      b.classList.add('active');
+      document.getElementById(b.dataset.tab).classList.add('active');
+      STATE.tab = b.dataset.tab;
+      Object.keys(CH).forEach(k => CH[k].resize());
+      if (MAP) setTimeout(() => MAP.invalidateSize(), 30);
+    };
+  });
+
+  document.getElementById('detail-head').onclick = e => {
+    const th = e.target.closest('th');
+    if (!th) return;
+    const c = th.dataset.col;
+    STATE.sort = { col: c, dir: STATE.sort.col === c ? -STATE.sort.dir : -1 };
+    STATE.page = 0; renderTable();
+  };
+  document.getElementById('pg-prev').onclick = () => { STATE.page--; renderTable(); };
+  document.getElementById('pg-next').onclick = () => { STATE.page++; renderTable(); };
+
+  document.getElementById('btn-csv').onclick = exportCSV;
+  document.getElementById('btn-png-tab').onclick = () => exportPNG(STATE.tab, scopeName() + '_' + STATE.tab);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-png]'),
+    b => { b.onclick = () => exportPNG(b.dataset.png, scopeName() + '_' + b.dataset.png); });
+}
+
+/* ---------------------------------------------------------------
+   Exports — always the filtered set, never the full file
+   --------------------------------------------------------------- */
+function scopeName() {
+  const p = STATE.filters.provinces;
+  const geo = p.length === 0 ? 'national' : p.map(x => CODE[x] || x.slice(0, 3).toUpperCase()).join('-');
+  const yr = STATE.filters.years.slice().sort((a, b) => a - b);
+  const ytxt = yr.length === 0 ? 'noyear' : yr.length === 1 ? String(yr[0]) : yr[0] + '-' + yr[yr.length - 1];
+  return 'dengue_' + geo + '_' + ytxt + '_' + AGG.windowTxt.replace('\u2013', '-');
+}
+
+function exportCSV() {
+  const rows = tableRows();
+  const head = ['Province', 'Year', 'Month', 'Cases', 'Deaths', 'CFR_percent', 'Population', 'IR_per_100000'];
+  const esc = v => {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const body = rows.map(r => [
+    r.prov, r.year, mName(r.month), r.cases, r.deaths,
+    r.cfr == null ? '' : r.cfr.toFixed(1),
+    r.pop == null ? '' : r.pop,
+    r.ir == null ? '' : r.ir.toFixed(1)
+  ].map(esc).join(','));
+  const meta = [
+    '# Cambodia National Dengue Surveillance - filtered export',
+    '# Generated ' + new Date().toISOString(),
+    '# Years ' + STATE.filters.years.slice().sort((a, b) => a - b).join(' ') +
+      ' | Months ' + AGG.windowTxt.replace('\u2013', '-') +
+      ' | Provinces ' + (STATE.filters.provinces.length ? STATE.filters.provinces.join('; ') : 'all'),
+    '# CFR blank below ' + MIN_CASES_FOR_CFR + ' cases. Absent province-months are absent from this file, not zero.',
+    '# Population 2018-2019 back-extrapolated. ' + mName(DIM.latestMonth) + ' ' + DIM.latestYear + ' provisional.'
+  ];
+  const csv = meta.concat([head.join(',')], body).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = scopeName() + '.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function exportPNG(elId, name) {
+  const el = document.getElementById(elId);
+  if (!window.html2canvas) {
+    alert('PNG export needs html2canvas, which loads from a CDN. Check the connection, or save html2canvas beside index.html and repoint the script tag.');
+    return;
+  }
+  html2canvas(el, { backgroundColor: '#FFFFFF', scale: 2, useCORS: true, logging: false }).then(canvas => {
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = name + '.png';
+    a.click();
+  });
+}
+
+/* ---------------------------------------------------------------
+   Boot
+   --------------------------------------------------------------- */
+loadData().then(() => {
+  STATE.filters.years = [DIM.latestYear];
+  STATE.comparisonYear = DIM.latestYear - 1;
+  document.getElementById('extract-date').textContent = 'Extracted ' + EXTRACT_DATE;
+  wire();
+  syncControls();
+  renderFooters();
+  update();
+  document.getElementById('boot').style.display = 'none';
+}).catch(err => {
+  console.error(err);
+  document.querySelector('#boot .b1').textContent = 'Could not load the surveillance data.';
+  document.getElementById('boot-msg').innerHTML =
+    'index.html expects a <b>data/</b> folder beside it holding cases.csv, population.csv, agegroups.csv, ' +
+    'cambodia_provinces.geojson and inline-data.js. Keep that folder with the file when you move or email it.';
+});
+</script>
+<script src="data/inline-data.js"></script>
+</body>
+</html>
