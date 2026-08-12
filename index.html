@@ -1,0 +1,2723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dengue Situation Dashboard — Cambodia / Battambang (Wolbachia Program)</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  /* ==== CHAI unified color system — single source of truth ==== */
+  /* Core */
+  --chai-dark-blue:   #003E78;  /* primary: current year, headings, KPI values */
+  --chai-turquoise:   #117996;  /* secondary series, comparison year, links */
+  --chai-gold:        #F3B71B;  /* alert / warning state */
+  --chai-dark-red:    #7C1220;  /* epidemic / outbreak state */
+  --chai-green:       #1ED37F;  /* safe / below-threshold state */
+  /* Categorical series — USE IN THIS ORDER for multi-series charts */
+  --cat-1: #003E78;  --cat-2: #117996;  --cat-3: #1ED37F;
+  --cat-4: #6EDBCD;  --cat-5: #D5E7EF;  --cat-6: #F3B71B;
+  /* Choropleth ramp — low to high (5 bins) */
+  --ramp-1: #D5E7EF;  --ramp-2: #46C6EA;  --ramp-3: #158CFF;
+  --ramp-4: #117996;  --ramp-5: #003E78;
+  /* Neutrals */
+  --surface:      #FFFFFF;
+  --surface-alt:  #F2F2F2;
+  --grid:         #F2F2F2;
+  --text-primary: #003E78;
+  --text-body:    #1A1A1A;
+  --text-muted:   #6B7280;
+
+  /* ---- Structural aliases: derived only from the tokens above, never a new hex ---- */
+  --bg-app: var(--surface-alt);
+  --bg-card: var(--surface);
+  --bg-header: var(--chai-dark-blue);
+  --text-secondary: var(--text-muted);
+  --text-on-dark: var(--surface);
+  --accent: var(--chai-dark-blue);
+  --accent2: var(--chai-turquoise);
+  --danger: var(--chai-dark-red);
+  --positive: var(--chai-green);
+  --warning: var(--chai-gold);
+  --border: var(--grid);
+  --radius: 8px; --gap: 16px;
+}
+*{box-sizing:border-box;}
+body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,'Noto Sans Khmer','Khmer OS',sans-serif;background:var(--bg-app);color:var(--text-primary);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased;}
+.mono, .kpi-value, .kpi-sub, .dl, .axl, .qa-comp-pct{font-feature-settings:'tnum' 1;font-variant-numeric:tabular-nums;}
+.wrap{max-width:1400px;margin:0 auto;padding:20px;}
+header.top{background:var(--bg-header);color:var(--text-on-dark);border-radius:var(--radius);padding:20px 24px;margin-bottom:var(--gap);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+header.top h1{font-size:24px;margin:0 0 4px 0;font-weight:600;}
+header.top p{margin:0;font-size:13px;color:var(--text-on-dark);opacity:.8;}
+.tabs{display:flex;gap:6px;background:rgba(255,255,255,0.08);padding:4px;border-radius:8px;}
+.tab-btn{background:transparent;border:none;color:var(--text-on-dark);padding:8px 16px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;}
+.btn-icon{font-size:20px;vertical-align:middle;margin-right:6px;line-height:1;}
+.kpi-icon{font-size:26px;vertical-align:middle;margin-right:8px;line-height:1;}
+.tab-btn.active{background:var(--accent2);color:var(--text-body);}
+.tab-btn:hover:not(.active){background:rgba(255,255,255,0.12);}
+.view{display:none;}
+.view.active{display:block;animation:fade .25s;}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:var(--gap);margin-bottom:var(--gap);}
+.kpi-card{background:var(--bg-card);border-radius:var(--radius);padding:16px;box-shadow:0 1px 2px rgba(16,24,40,0.05);border:1px solid var(--border);}
+.kpi-label{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-secondary);margin-bottom:8px;font-weight:500;}
+.kpi-value{font-size:32px;font-weight:700;line-height:1;color:var(--text-primary);}
+.kpi-unit{font-size:13px;margin-top:4px;color:var(--accent);font-weight:500;}
+.kpi-sub{font-size:11px;margin-top:6px;color:var(--text-secondary);font-weight:500;}
+.kpi-tooltip{display:none;position:absolute;z-index:2000;background:var(--text-body);color:var(--surface);padding:10px 12px;border-radius:8px;font-size:13px;line-height:1.45;max-width:280px;box-shadow:0 1px 2px rgba(16,24,40,0.05);}
+.kpi-tooltip b{font-size:13px;font-weight:600;}
+.kpi-tooltip hr{border:none;border-top:1px solid rgba(255,255,255,.2);margin:6px 0;}
+.kpi-tooltip .d{color:var(--text-on-dark);opacity:.75;font-size:11px;}
+.seg-toggle{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.seg-btn{background:var(--surface);border:none;padding:9px 16px;font-size:13px;font-weight:500;color:var(--text-secondary);cursor:pointer;}
+.seg-btn.active{background:var(--accent);color:var(--surface);}
+.seg-btn:not(.active):hover{background:var(--surface-alt);}
+.qa-row{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.qa-badge{flex-shrink:0;width:64px;text-align:center;font-size:11px;font-weight:600;padding:3px 0;border-radius:5px;color:var(--surface);}
+.qa-badge.pass{background:var(--positive);} .qa-badge.warn{background:var(--warning);color:var(--text-body);} .qa-badge.fail{background:var(--text-body);}
+.qa-comp-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:13px;}
+.qa-comp-label{width:130px;flex-shrink:0;}
+.qa-comp-track{flex:1;height:14px;background:var(--border);border-radius:7px;overflow:hidden;}
+.qa-comp-fill{height:100%;background:var(--accent);}
+.qa-comp-pct{width:48px;text-align:right;flex-shrink:0;font-weight:600;}
+.kpi-sub.up{color:var(--text-body);} .kpi-sub.down{color:var(--positive);}
+.grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:var(--gap);margin-bottom:var(--gap);}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);margin-bottom:var(--gap);}
+@media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr;}}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;box-shadow:0 1px 2px rgba(16,24,40,0.05);}
+.card h3{margin:0 0 2px 0;font-size:18px;font-weight:600;letter-spacing:normal;}
+.vno{font-size:11px;font-weight:600;color:var(--text-secondary);letter-spacing:.04em;display:block;margin-bottom:2px;text-transform:uppercase;}
+.card-title-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.card-title-row h3{margin:0 0 4px 0;}
+.dl-btn-group{display:flex;gap:6px;flex-shrink:0;}
+.dl-btn{background:var(--surface-alt);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--text-secondary);white-space:nowrap;transition:.15s;}
+.dl-btn:hover{background:var(--border);color:var(--text-primary);}
+.card .note{font-size:11px;color:var(--text-secondary);margin-bottom:12px;line-height:1.45;}
+.card canvas{max-height:290px;}
+#province-chart-wrap-ir canvas{max-height:none;}
+#province-chart-wrap-cases canvas{max-height:none;}
+#deaths-chart-wrap canvas{max-height:none;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{text-align:left;padding:8px 10px;border-bottom:2px solid var(--border);color:var(--text-secondary);text-transform:uppercase;font-size:11px;letter-spacing:.04em;font-weight:500;cursor:pointer;user-select:none;white-space:nowrap;}
+th:hover{color:var(--text-primary);}
+td{padding:7px 10px;border-bottom:1px solid var(--border);}
+tr:hover td{background:var(--surface-alt);}
+.tbl-wrap{max-height:420px;overflow:auto;}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge.df{background:var(--surface-alt);color:var(--accent);}
+.badge.dhf{background:var(--surface-alt);color:var(--accent2);}
+.caveat{background:var(--surface-alt);border-left:3px solid var(--warning);color:var(--text-body);border-radius:8px;padding:10px 14px;font-size:11px;margin-bottom:var(--gap);}
+#map{height:520px;border-radius:var(--radius);}
+.legend-box{background:var(--bg-card);border-radius:var(--radius);padding:14px 18px;margin-top:12px;font-size:11px;display:flex;gap:20px;flex-wrap:wrap;box-shadow:0 1px 2px rgba(16,24,40,0.05);}
+.prov-label-tooltip{background:transparent;border:none;box-shadow:none;padding:0;}
+.prov-label-tooltip::before{display:none;}
+.prov-label{font-size:8px;line-height:1.1;text-align:center;white-space:nowrap;font-weight:600;}
+.prov-label-dark{color:var(--text-body);text-shadow:0 0 3px var(--surface),0 0 3px var(--surface),0 0 3px var(--surface),0 0 3px var(--surface);}
+.prov-label-light{color:var(--surface);text-shadow:0 0 3px var(--text-body),0 0 3px var(--text-body),0 0 3px var(--text-body),0 0 3px var(--text-body);}
+.legend-item{display:flex;align-items:center;gap:6px;}
+.dot{width:11px;height:11px;border-radius:50%;display:inline-block;}
+footer{text-align:center;font-size:11px;color:var(--text-secondary);padding:18px 0;}
+.filter-row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
+.filter-row select{padding:6px 10px;border-radius:6px;border:1px solid var(--border);font-size:13px;background:var(--surface);}
+.msdd-wrap{position:relative;display:inline-block;}
+.msdd-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-size:13px;cursor:pointer;min-width:170px;text-align:left;color:var(--text-primary);}
+.msdd-btn:hover{border-color:var(--accent);}
+.msdd-btn::after{content:'▾';float:right;color:var(--text-secondary);}
+.msdd-panel{display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 1px 2px rgba(16,24,40,0.05);padding:8px;z-index:50;max-height:240px;overflow-y:auto;min-width:170px;}
+.msdd-panel.open{display:block;}
+.msdd-item{display:flex;align-items:center;gap:7px;padding:5px 8px;font-size:13px;cursor:pointer;border-radius:5px;}
+.msdd-item:hover{background:var(--surface-alt);}
+.msdd-item input{margin:0;cursor:pointer;}
+.subtabs{display:flex;gap:6px;margin-bottom:var(--gap);border-bottom:2px solid var(--border);padding-bottom:0;}
+.subtab-btn{background:transparent;border:none;color:var(--text-secondary);padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:.15s;}
+.subtab-btn:hover{color:var(--text-primary);}
+.subtab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.subview{display:none;}
+.subview.active{display:block;animation:fade .2s;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Dengue Situation Dashboard</h1>
+      <p>National Surveillance — DHF Weekly Report — Week 27, 2026</p>
+    </div>
+  </header>
+
+  <!-- NATIONAL VIEW -->
+  <div class="view active" id="view-national">
+    <div class="card" style="margin-bottom:var(--gap);background:var(--surface-alt);border:1px solid var(--grid);">
+      <h3 style="display:flex;align-items:center;gap:8px;">Filter — applies to the KPI cards below and the Severity/Yearly Trend charts (Trends tab)</h3>
+      <div class="filter-row" style="flex-wrap:wrap;">
+        <label>Province:</label>
+        <select id="global-province-select"><option value="__ALL__">All Provinces</option></select>
+        <span style="width:14px;"></span>
+        <label>From Year</label>
+        <select id="global-from-year"></select>
+        <label>Month</label>
+        <select id="global-from-month"></select>
+        <span style="width:14px;"></span>
+        <label>To Year</label>
+        <select id="global-to-year"></select>
+        <label>Month</label>
+        <select id="global-to-month"></select>
+      </div>
+      <div class="note" style="margin-top:4px;">"National Case & Death Trend — by Month" has its own Province/Year controls (multi-year comparison view). This bar doesn't apply to the Epidemic Threshold chart (its month-of-year corridor design doesn't fit a continuous date range), or to province-comparison charts elsewhere on this tab (they show all provinces at once by design).</div>
+    </div>
+    <div class="kpi-row" id="top-kpi-row" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));">
+      <div class="kpi-card" id="kpi-cases" style="cursor:default;">
+        <div class="kpi-label" id="kpi-cases-label">Cases — National YTD</div>
+        <div class="kpi-value" id="kpi-cases-value">-</div>
+        <div class="kpi-unit" id="kpi-cases-sub">-</div>
+        <div style="height:32px;position:relative;margin-top:4px;"><canvas id="spark-cases"></canvas></div>
+        <div class="kpi-sub" id="kpi-cases-change">-</div>
+      </div>
+      <div class="kpi-card alt" id="kpi-deaths" style="cursor:default;">
+        <div class="kpi-label" id="kpi-deaths-label">Deaths YTD</div>
+        <div class="kpi-value" id="kpi-deaths-value">-</div>
+        <div class="kpi-unit" id="kpi-deaths-sub">-</div>
+        <div style="height:32px;position:relative;margin-top:4px;"><canvas id="spark-deaths"></canvas></div>
+        <div class="kpi-sub" id="kpi-deaths-change">-</div>
+      </div>
+      <div class="kpi-card" id="kpi-cfr" style="cursor:default;">
+        <div class="kpi-label">Case Fatality Rate</div>
+        <div class="kpi-value" id="kpi-cfr-value">-</div>
+        <div class="kpi-unit" id="kpi-cfr-sub">deaths per 100 cases</div>
+        <div style="height:32px;position:relative;margin-top:4px;"><canvas id="spark-cfr"></canvas></div>
+        <div class="kpi-sub" id="kpi-cfr-change">-</div>
+      </div>
+      <div class="kpi-card alt" id="kpi-ir" style="cursor:default;">
+        <div class="kpi-label">Incidence Rate</div>
+        <div class="kpi-value" id="kpi-ir-value">-</div>
+        <div class="kpi-unit" id="kpi-ir-sub">cases per 100,000 population</div>
+        <div style="height:32px;position:relative;margin-top:4px;"><canvas id="spark-ir"></canvas></div>
+        <div class="kpi-sub" id="kpi-ir-change">-</div>
+      </div>
+      <div class="kpi-card" id="kpi-above" style="cursor:default;">
+        <div class="kpi-label">Provinces Above the National Rate</div>
+        <div class="kpi-value" id="kpi-above-value">-</div>
+        <div class="kpi-unit" id="kpi-above-sub">-</div>
+        <div style="height:32px;position:relative;margin-top:4px;"><canvas id="spark-above"></canvas></div>
+        <div class="kpi-sub" id="kpi-above-change">-</div>
+      </div>
+      <div class="kpi-card alt" id="kpi-yoy" style="cursor:default;">
+        <div class="kpi-label">Change vs Same Window Last Year</div>
+        <div class="kpi-value" id="kpi-yoy-value">-</div>
+        <div class="kpi-unit" id="kpi-yoy-label">like-for-like</div>
+        <div style="height:32px;position:relative;margin-top:4px;"><canvas id="spark-yoy"></canvas></div>
+        <div class="kpi-sub" id="kpi-yoy-change">-</div>
+      </div>
+    </div>
+
+    <div class="subtabs">
+      <button class="subtab-btn active" data-sub="trends"><span class="btn-icon">📊</span>Overview</button>
+      <button class="subtab-btn" data-sub="province"><span class="btn-icon">🗂️</span>Map &amp; Table</button>
+    </div>
+
+    <div class="subview active" id="sub-trends">
+      <div class="card" style="margin-bottom:var(--gap);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+          <h3><span class="vno">N2</span>National Case &amp; Death Trend — 2018 to 2026</h3>
+          <div class="seg-toggle" id="n2-metric-toggle">
+            <button type="button" class="seg-btn active" data-metric="cases">Cases</button>
+            <button type="button" class="seg-btn" data-metric="ir">IR</button>
+          </div>
+        </div>
+        <div class="note" id="n2-metric-note">Full calendar-year totals 2018-2025 (historical line-list) · 2026 is year-to-date, not a full year — read the bar height accordingly. Bars = cases (left axis), line = deaths (right axis, drawn in front).</div>
+        <div style="height:320px;"><canvas id="chart-trend-yearly"></canvas></div>
+        <div class="note chart-note" id="trend-yearly-note" style="margin-top:8px;"></div>
+      </div>
+      <div class="card" style="margin-bottom:var(--gap);">
+        <h3><span class="vno">N3</span>Monthly Case Composition by Severity — DF, DHF, DSS and Deaths</h3>
+        <div class="note">Stacked bars = DF / DHF / DSS / Deaths (DHFD) case mix by month. Dashed line = DSS share of that month, right axis. Year labels are centered under each year's group of monthly bars. 2026 months (severity mix not split in the source) show as a single gray "Total cases" bar.</div>
+        <div id="severity-timeline-wrap" style="height:360px;position:relative;"><canvas id="chart-severity-timeline"></canvas></div>
+        <div class="note chart-note" id="severity-2026-note" style="margin-top:8px;"></div>
+      </div>
+      <div class="card" style="margin-bottom:var(--gap);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+          <h3><span class="vno">N4</span>National Case &amp; Death Trend — by Month</h3>
+          <div class="seg-toggle" id="n4-metric-toggle">
+            <button type="button" class="seg-btn active" data-metric="cases">Cases</button>
+            <button type="button" class="seg-btn" data-metric="ir">IR</button>
+          </div>
+        </div>
+        <div class="note">Monthly totals: 2018-2025 from the historical line-list, 2026 from the DHF weekly bulletin's own monthly breakdown (through the last reported month — later months are left blank, not zero).</div>
+        <div class="filter-row">
+          <label>Province:</label>
+          <select id="trend-province-select"><option value="__ALL__">All Cambodia</option></select>
+          <label>Compare years:</label>
+          <div id="trend-year-dropdown"></div>
+        </div>
+        <div style="height:320px;"><canvas id="chart-trend"></canvas></div>
+        <div class="note chart-note" id="trend-2026-note" style="margin-top:8px;"></div>
+      </div>
+      <div class="card" style="margin-bottom:var(--gap);">
+        <h3><span class="vno">L2</span>Cumulative Cases, 2026 vs. Selected Year</h3>
+        <div class="note">Counts only, never rates — a cumulative rate over a partial year is not comparable with a full one. The running total skips unreported months rather than carrying a flat line through them, so a flat segment means no cases were reported, not that no report arrived.</div>
+        <div class="filter-row">
+          <label>Compare against:</label>
+          <div id="cumul-year-dropdown"></div>
+        </div>
+        <div style="height:320px;"><canvas id="chart-cumulative"></canvas></div>
+        <div class="note chart-note" id="cumulative-note" style="margin-top:8px;"></div>
+      </div>
+      <div class="card" style="margin-bottom:var(--gap);">
+        <h3><span class="vno">N1</span>Outbreak Signal — 2026 Monthly Cases Against the 2018–2025 Baseline</h3>
+        <div class="note" id="epi-method-desc">Counts, not rates — the threshold is defined on counts. Baseline is 8 prior years (2018-2025), built only from months that actually reported, so each month rests on between 7 and 8 years.</div>
+        <div style="height:340px;position:relative;"><canvas id="chart-epidemic-channel"></canvas></div>
+        <div class="legend-box" id="epi-legend" style="margin-top:6px;"></div>
+        <div class="note chart-note" id="epidemic-channel-note" style="margin-top:8px;"></div>
+      </div>
+      <div class="caveat"><b>Two different "2025" numbers appear on this page — they are not the same thing.</b> Charts labeled "YTD" compare 2026 to the <i>same reporting week</i> in 2025 (weekly DHF bulletin). The charts above and the Multi-Year table (Map & Table tab) instead use <i>full calendar-year</i> 2018–2025 totals from the historical line-list.</div>
+      <div class="card" style="margin-bottom:var(--gap);">
+        <h3><span class="vno">N5</span>Province Ranking — Incidence Rate and Cases — 2026</h3>
+        <div class="note">All 25 provinces. Left: incidence rate per 100,000 population. Right: raw case count. Same year/province selection drives both panels. Bar colour shades dark-to-light within each panel's own metric — darkest = highest.</div>
+        <div class="filter-row" style="flex-wrap:wrap;">
+          <label>Year(s):</label>
+          <div id="province-chart-year-dropdown"></div>
+          <span style="font-size:11.5px;color:var(--text-secondary);">(combines years)</span>
+          <span style="width:14px;"></span>
+          <label>Provinces:</label>
+          <div id="province-chart-province-dropdown"></div>
+          <span style="width:14px;"></span>
+          <label>Sort:</label>
+          <div class="seg-toggle" id="province-chart-sort-toggle">
+            <button type="button" class="seg-btn active" data-sort="desc">Highest first</button>
+            <button type="button" class="seg-btn" data-sort="asc">Lowest first</button>
+            <button type="button" class="seg-btn" data-sort="az">A–Z</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;">
+          <div style="flex:1;min-width:340px;">
+            <div class="note" style="font-weight:700;color:var(--text-primary);margin-bottom:4px;">Incidence rate per 100,000</div>
+            <div id="province-chart-wrap-ir" style="height:900px;"><canvas id="chart-province-ir"></canvas></div>
+          </div>
+          <div style="flex:1;min-width:340px;">
+            <div class="note" style="font-weight:700;color:var(--text-primary);margin-bottom:4px;">Cases</div>
+            <div id="province-chart-wrap-cases" style="height:900px;"><canvas id="chart-province-cases"></canvas></div>
+          </div>
+        </div>
+        <div class="note chart-note" id="province-chart-note" style="margin-top:8px;"></div>
+      </div>
+      <div class="card" style="margin-bottom:var(--gap);">
+        <h3 id="deaths-chart-title"><span class="vno">N6</span>Deaths by Province — count, mortality rate, or case fatality rate</h3>
+        <div class="note mono" style="font-size:11px;color:var(--text-secondary);margin-bottom:6px;">Mortality Rate = (deaths / population) × 100,000 &nbsp;·&nbsp; Case Fatality Rate = (deaths / total cases) × 100</div>
+        <div class="note">Deaths appeared on this dashboard only by month and by year, never ranked by province. Switch metric: the three answer different questions and put different provinces at the top.</div>
+        <div class="filter-row" style="flex-wrap:wrap;">
+          <label>Show as:</label>
+          <label style="display:flex;align-items:center;gap:4px;font-weight:400;"><input type="radio" name="deaths-chart-metric" value="count" checked> Death count</label>
+          <label style="display:flex;align-items:center;gap:4px;font-weight:400;"><input type="radio" name="deaths-chart-metric" value="mortality"> Mortality rate (per 100,000)</label>
+          <label style="display:flex;align-items:center;gap:4px;font-weight:400;"><input type="radio" name="deaths-chart-metric" value="cfr"> Case fatality rate (%)</label>
+        </div>
+        <div class="filter-row" style="flex-wrap:wrap;">
+          <label>Year(s):</label>
+          <div id="deaths-chart-year-dropdown"></div>
+          <span style="font-size:11.5px;color:var(--text-secondary);">(combines years)</span>
+        </div>
+        <div id="deaths-chart-wrap" style="height:900px;"><canvas id="chart-deaths"></canvas></div>
+        <div class="note" id="deaths-chart-mode-desc" style="margin-top:8px;"></div>
+        <div class="note chart-note" id="deaths-chart-note" style="margin-top:6px;"></div>
+        <div class="note" id="deaths-chart-suppressed-note" style="margin-top:4px;"></div>
+        <div class="note" id="deaths-chart-zero-note" style="margin-top:4px;"></div>
+        <div class="note" id="deaths-chart-filters-note" style="margin-top:10px;color:var(--text-secondary);font-size:11px;"></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <h3><span class="vno">N7</span>Cases by Age Group</h3>
+          <div class="note">National totals, 2025 vs 2026</div>
+          <div style="height:320px;"><canvas id="chart-age"></canvas></div>
+        </div>
+        <div class="card">
+          <h3><span class="vno">N8</span>2026 Severity by Age Group</h3>
+          <div class="note">DF / DHF / DSS composition</div>
+          <canvas id="chart-severity-age"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="subview" id="sub-province">
+      <div class="card" style="margin-bottom:var(--gap);position:relative;">
+        <div class="dl-btn-group" style="position:absolute;top:13px;right:15px;"><button type="button" class="dl-btn" id="v6-download-btn">⬇ PNG</button></div>
+        <h3><span class="vno">N9</span>Province × Month Heatmap — Cases</h3>
+        <div class="note">Which provinces peak early and which peak late — directly relevant to Wolbachia release timing. Click a province name to set the filter. Incidence rate for the year is in the last column.</div>
+        <div class="filter-row" style="flex-wrap:wrap;">
+          <label>Year:</label>
+          <select id="v6-year-select"></select>
+        </div>
+        <div style="overflow-x:auto;"><svg id="v6-heatmap" width="900" height="720"></svg></div>
+        <div class="legend-box" id="v6-legend" style="margin-top:8px;"></div>
+        <div class="note" id="v6-caveat" style="margin-top:4px;">August to December 2026 are blank because they have not been reported yet — not because there were no cases.</div>
+      </div>
+      <div class="caveat">Data quality note: the source CFR2025 column in the DHF weekly file was computed against the wrong year's case denominator (mixing 2025 deaths with 2026 cases). CFR2025 figures here are recalculated correctly as Deaths2025 ÷ Cases2025.</div>
+      <div class="card" style="margin-bottom:var(--gap);">
+        <div class="card-title-row">
+          <h3><span class="vno">N11</span>Dengue Risk Map by Province</h3>
+          <div class="dl-btn-group"><button type="button" class="dl-btn" id="ir-map-download-btn">⬇ PNG</button></div>
+        </div>
+        <div class="filter-row" style="flex-wrap:wrap;">
+          <div class="seg-toggle" id="ir-map-metric-toggle">
+            <button type="button" class="seg-btn active" data-metric="ir">IR</button>
+            <button type="button" class="seg-btn" data-metric="cases">Cases</button>
+          </div>
+          <label>Year(s):</label>
+          <div id="ir-map-year-dropdown"></div>
+          <span style="font-size:11.5px;color:var(--text-secondary);">(check more than one to compare side-by-side — maps shrink to fit as you add years)</span>
+        </div>
+        <div id="ir-risk-map-frame" style="height:560px;border-radius:var(--radius);margin-top:8px;background:var(--surface-alt);position:relative;"></div>
+        <div class="legend-box" id="ir-map-legend"></div>
+        <div class="note chart-note" id="ir-map-note" style="margin-top:8px;"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:var(--gap);">
+        <h3><span class="vno">N12</span>Cases by Province — Multi-Year (2018-2026)</h3>
+        <div class="note">Arrows show change vs the previous year in that row. Click headers to sort. Darker shading = higher case count within that year's column. Total row at the bottom. Follows the Province selected in the filter bar above (Overview tab).</div>
+        <div class="filter-row">
+          <label>View:</label>
+          <label style="display:flex;align-items:center;gap:4px;font-weight:400;"><input type="radio" name="myr-view-mode" value="whole" checked> Whole calendar year (2026 = YTD)</label>
+          <label style="display:flex;align-items:center;gap:4px;font-weight:400;"><input type="radio" name="myr-view-mode" value="ytd"> Same period every year (Jan-<span id="myr-ytd-month-label"></span>)</label>
+        </div>
+        <div class="tbl-wrap" style="max-height:520px;"><table id="tbl-multiyear"><thead><tr id="tbl-multiyear-head"></tr></thead><tbody></tbody></table></div>
+      </div>
+      <div class="card">
+        <h3><span class="vno">N13</span>Province Detail — 2026 YTD vs 2025 YTD</h3>
+        <div class="note">Click headers to sort. Total row at the bottom (CFR and IR recalculated from totals, not averaged). IR = Incidence Rate per 100,000 population, using real year-by-year data for all 25 provinces from NIS's official Population Projection 2020-2033 report (same figures as the Risk Map above). Follows the Province selected in the filter bar above (Overview tab).</div>
+        <div class="tbl-wrap"><table id="tbl-province"><thead><tr>
+          <th data-k="province">Province</th><th data-k="cases2026">Cases 2026</th><th data-k="cases2025">Cases 2025</th>
+          <th data-k="ir2026">IR 2026</th><th data-k="ir2025">IR 2025</th>
+          <th data-k="deaths2026">Deaths 2026</th><th data-k="cfr2026">CFR 2026 (%)</th><th data-k="cfr2025">CFR 2025 (%)</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <div class="card" id="insight-panel" style="margin-bottom:var(--gap);border-left:4px solid var(--accent);">
+      <h3 style="display:flex;align-items:center;gap:8px;"><span class="vno">INSIGHT</span>💡 What the Data Says Right Now</h3>
+      <div class="note">Computed live from the current filter selection — these change when you change the filter above, not fixed text.</div>
+      <ul id="insight-list" style="margin:10px 0 0; padding-left:20px; line-height:1.7;"></ul>
+    </div>
+  </div>
+
+
+
+</div>
+
+<script>
+(async function(){
+  let BUNDLE;
+  try {
+    BUNDLE = await fetch('./Data/dengue-data.json').then(r => {
+      if(!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    });
+  } catch (err) {
+    document.body.innerHTML = '<div style=\"padding:40px;font-family:sans-serif;color:#7C1220;\"><h2>Could not load dashboard data</h2><p>Expected to find <code>Data/dengue-data.json</code> in the same place as this page. If you just opened this file directly from disk, run a local server instead (see README) — browsers block fetch() of local files with file://.</p><p style=\"color:#6B7280;font-size:13px;\">Error: ' + err.message + '</p></div>';
+    return;
+  }
+
+
+const nat = BUNDLE.national;
+// ---- Single source of truth for color: read every value from the :root CSS
+// variables defined in <style>. No hex literal is ever written below this line —
+// if a new color is ever needed, add it to :root, not here.
+const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const PALETTE = {
+  darkBlue:  cssVar('--chai-dark-blue'),
+  turquoise: cssVar('--chai-turquoise'),
+  gold:      cssVar('--chai-gold'),
+  darkRed:   cssVar('--chai-dark-red'),
+  green:     cssVar('--chai-green'),
+  cat: [cssVar('--cat-1'), cssVar('--cat-2'), cssVar('--cat-3'), cssVar('--cat-4'), cssVar('--cat-5'), cssVar('--cat-6')],
+  ramp: [cssVar('--ramp-1'), cssVar('--ramp-2'), cssVar('--ramp-3'), cssVar('--ramp-4'), cssVar('--ramp-5')],
+  surface: cssVar('--surface'),
+  surfaceAlt: cssVar('--surface-alt'),
+  grid: cssVar('--grid'),
+  textPrimary: cssVar('--text-primary'),
+  textBody: cssVar('--text-body'),
+  textMuted: cssVar('--text-muted'),
+};
+function hexToRgba(hex, alpha){
+  const h = hex.replace('#','');
+  const full = h.length===3 ? h.split('').map(c=>c+c).join('') : h;
+  const r = parseInt(full.substring(0,2),16), g = parseInt(full.substring(2,4),16), b = parseInt(full.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+// Shared diagonal-hatch texture for "partial / different-in-kind" data (2026 YTD bars, or months
+// where a breakdown genuinely isn't available) — a pattern, not just a flat color, so it can't be
+// mistaken for a normal data bar or a rendering glitch at a glance. Used by both N2 and N3.
+function hatchPattern(baseColor){
+  const c = document.createElement('canvas'); c.width = 8; c.height = 8;
+  const pctx = c.getContext('2d');
+  pctx.fillStyle = baseColor; pctx.fillRect(0,0,8,8);
+  pctx.strokeStyle = 'rgba(255,255,255,0.55)'; pctx.lineWidth = 1.6;
+  pctx.beginPath(); pctx.moveTo(0,8); pctx.lineTo(8,0); pctx.stroke();
+  return pctx.createPattern(c, 'repeat');
+}
+// Categorical order (rule: use in this exact order for multi-series charts).
+const COLORS = PALETTE.cat.concat([PALETTE.cat[0]]);
+// Deterministic year coloring: current year (2026) is always primary (--chai-dark-blue);
+// every other year cycles through the remaining categorical tokens, in order.
+const YEAR_PALETTE_REST = [PALETTE.cat[1], PALETTE.cat[2], PALETTE.cat[3], PALETTE.cat[4], PALETTE.cat[5]];
+const YEAR_ORDER_FOR_COLOR = [2018,2019,2020,2021,2022,2023,2024,2025];
+function colorForYear(year){
+  if(Number(year) === 2026) return PALETTE.cat[0];
+  const idx = YEAR_ORDER_FOR_COLOR.indexOf(Number(year));
+  return YEAR_PALETTE_REST[(idx<0?0:idx) % YEAR_PALETTE_REST.length];
+}
+
+if(window.Chart){
+  Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
+  Chart.defaults.plugins.tooltip.bodyFont = { family: "'Inter', sans-serif" };
+  Chart.defaults.plugins.tooltip.titleFont = { family: "'Inter', sans-serif", weight: '600' };
+  Chart.defaults.scale.ticks.font = { family: "'Inter', sans-serif" };
+  Chart.defaults.color = PALETTE.textMuted;
+  Chart.defaults.scale.ticks.color = PALETTE.textMuted;
+  Chart.defaults.scale.title.color = PALETTE.textPrimary;
+  Chart.defaults.borderColor = PALETTE.grid;
+  Chart.defaults.scale.grid.color = PALETTE.grid;
+  // Chart junk removal: vertical gridlines off everywhere by default, horizontal kept thin at
+  // the border colour; individual charts can still override x/y explicitly if they need to.
+  Chart.defaults.plugins.legend.labels.boxWidth = 10;
+  Chart.defaults.plugins.legend.labels.boxHeight = 10;
+  Chart.defaults.elements.bar.borderWidth = 0;
+  Chart.defaults.elements.line.borderWidth = 2;
+  Chart.defaults.plugins.tooltip.backgroundColor = PALETTE.textBody;
+  Chart.defaults.plugins.tooltip.padding = 10;
+  Chart.defaults.plugins.tooltip.cornerRadius = 6;
+}
+function fmt(n){ return n==null? '-' : n.toLocaleString(); }
+
+// Reusable checkbox-dropdown for multi-selecting years (replaces native <select multiple>)
+function buildYearDropdown(containerId, years, defaultSelectedYears, onChange){
+  const container = document.getElementById(containerId);
+  const wrap = document.createElement('div'); wrap.className = 'msdd-wrap';
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'msdd-btn';
+  const panel = document.createElement('div'); panel.className = 'msdd-panel';
+  const defaultSet = new Set(defaultSelectedYears);
+  years.forEach(y=>{
+    const item = document.createElement('label'); item.className = 'msdd-item';
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = y; cb.checked = defaultSet.has(y);
+    cb.addEventListener('change', ()=>{ updateLabel(); onChange(getSelected()); });
+    const span = document.createElement('span'); span.textContent = y;
+    item.appendChild(cb); item.appendChild(span);
+    panel.appendChild(item);
+  });
+  function getSelected(){ return Array.from(panel.querySelectorAll('input:checked')).map(i=>parseInt(i.value)).sort((a,b)=>a-b); }
+  function updateLabel(){
+    const sel = getSelected();
+    btn.textContent = sel.length===0 ? 'No years selected' : (sel.length===years.length ? 'All years' : sel.join(', '));
+  }
+  btn.addEventListener('click', (e)=>{ e.stopPropagation(); panel.classList.toggle('open'); });
+  document.addEventListener('click', (e)=>{ if(!wrap.contains(e.target)) panel.classList.remove('open'); });
+  wrap.appendChild(btn); wrap.appendChild(panel);
+  container.appendChild(wrap);
+  updateLabel();
+  return { getSelected };
+}
+
+// Same look as buildYearDropdown, but for arbitrary string values (province names, etc.) rather
+// than years — buildYearDropdown hardcodes parseInt() on the values, which breaks for text.
+function buildMultiSelectDropdown(containerId, values, defaultSelectedValues, onChange, allLabel){
+  const container = document.getElementById(containerId);
+  const wrap = document.createElement('div'); wrap.className = 'msdd-wrap';
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'msdd-btn';
+  const panel = document.createElement('div'); panel.className = 'msdd-panel';
+  const defaultSet = new Set(defaultSelectedValues);
+
+  const actionRow = document.createElement('div');
+  actionRow.style.cssText = 'display:flex;gap:10px;padding:4px 10px 8px;border-bottom:1px solid var(--border);margin-bottom:4px;';
+  const selectAllLink = document.createElement('a'); selectAllLink.href='javascript:void(0)'; selectAllLink.textContent='Select all';
+  const clearAllLink = document.createElement('a'); clearAllLink.href='javascript:void(0)'; clearAllLink.textContent='Clear all';
+  [selectAllLink, clearAllLink].forEach(a=>{ a.style.cssText = 'font-size:12px;color:var(--accent);text-decoration:none;font-weight:600;'; });
+  selectAllLink.addEventListener('click', ()=>{
+    panel.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.checked=true);
+    updateLabel(); onChange(getSelected());
+  });
+  clearAllLink.addEventListener('click', ()=>{
+    panel.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.checked=false);
+    updateLabel(); onChange(getSelected());
+  });
+  actionRow.appendChild(selectAllLink); actionRow.appendChild(clearAllLink);
+  panel.appendChild(actionRow);
+
+  values.forEach(v=>{
+    const item = document.createElement('label'); item.className = 'msdd-item';
+    const cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = v; cb.checked = defaultSet.has(v);
+    cb.addEventListener('change', ()=>{ updateLabel(); onChange(getSelected()); });
+    const span = document.createElement('span'); span.textContent = v;
+    item.appendChild(cb); item.appendChild(span);
+    panel.appendChild(item);
+  });
+  function getSelected(){ return Array.from(panel.querySelectorAll('input:checked')).map(i=>i.value); }
+  function updateLabel(){
+    const sel = getSelected();
+    btn.textContent = sel.length===0 ? 'None selected' : (sel.length===values.length ? (allLabel || 'All') : `${sel.length} selected`);
+  }
+  btn.addEventListener('click', (e)=>{ e.stopPropagation(); panel.classList.toggle('open'); });
+  document.addEventListener('click', (e)=>{ if(!wrap.contains(e.target)) panel.classList.remove('open'); });
+  wrap.appendChild(btn); wrap.appendChild(panel);
+  container.appendChild(wrap);
+  updateLabel();
+  return { getSelected };
+}
+
+// Same look as buildYearDropdown, but picks exactly one value at a time (for the map, which can
+// only render one year's colors at once, unlike the multi-year line/bar charts).
+function buildSingleSelectDropdown(containerId, options, defaultValue, onChange){
+  const container = document.getElementById(containerId);
+  const wrap = document.createElement('div'); wrap.className = 'msdd-wrap';
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'msdd-btn';
+  const panel = document.createElement('div'); panel.className = 'msdd-panel';
+  let current = defaultValue;
+  function labelFor(v){ return options.find(o=>o.value===v)?.label ?? v; }
+  function updateLabel(){ btn.textContent = labelFor(current); }
+  function render(){
+    panel.innerHTML = '';
+    options.forEach(opt=>{
+      const item = document.createElement('div'); item.className = 'msdd-item';
+      item.style.cursor = 'pointer';
+      item.textContent = opt.label;
+      if(opt.value === current){ item.style.fontWeight = '700'; item.style.color = 'var(--accent)'; }
+      item.addEventListener('click', ()=>{
+        current = opt.value;
+        updateLabel(); render();
+        panel.classList.remove('open');
+        onChange(current);
+      });
+      panel.appendChild(item);
+    });
+  }
+  btn.addEventListener('click', (e)=>{ e.stopPropagation(); panel.classList.toggle('open'); });
+  document.addEventListener('click', (e)=>{ if(!wrap.contains(e.target)) panel.classList.remove('open'); });
+  wrap.appendChild(btn); wrap.appendChild(panel);
+  container.appendChild(wrap);
+  render(); updateLabel();
+  return { getValue: ()=>current };
+}
+
+
+// ---- SUB-TABS (National view's own Overview / Map & Table toggle) ----
+document.querySelectorAll('.subtab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const scope = btn.closest('.view');
+    scope.querySelectorAll('.subtab-btn').forEach(b=>b.classList.remove('active'));
+    scope.querySelectorAll('.subview').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    const pane = document.getElementById('sub-'+btn.dataset.sub);
+    pane.classList.add('active');
+    // Charts created while a pane was hidden can render at 0 size; force a resize now it's visible.
+    pane.querySelectorAll('canvas').forEach(c=>{
+      const ch = Chart.getChart(c);
+      if(ch) ch.resize();
+    });
+    // The risk map (Leaflet) lives in the "By Province" subtab — init on first visit, invalidateSize every time
+    if(btn.dataset.sub === 'province' && window._renderRiskMap){
+      const already = window._riskMapGetInstances && window._riskMapGetInstances().length;
+      if(!already){ window._renderRiskMap(); }
+      setTimeout(()=>{
+        (window._riskMapGetInstances ? window._riskMapGetInstances() : []).forEach(m=>m.invalidateSize());
+      }, 50);
+    }
+  });
+});
+
+// ---- NATIONAL ----
+function renderNational(){
+
+  // ---- Monthly national/province trend (2018-2026; 2026 now has real Jan-Jul monthly data) ----
+  const myr = BUNDLE.multiyear;
+  const monthly = BUNDLE.monthly;
+  const tc2026 = BUNDLE.total_cases_2026;
+  const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const histYears = [2018,2019,2020,2021,2022,2023,2024,2025,2026];
+
+  function abbrevFor(fullProvName){
+    return Object.keys(myr.name_map).find(k=>myr.name_map[k]===fullProvName);
+  }
+
+  // ---- Shared global filter: Province + From Year/Month + To Year/Month ----
+  // Drives the three time-series charts below (Severity, Monthly Trend, Yearly Trend).
+  // Doesn't apply to the Epidemic Threshold chart (fixed month-of-year corridor design) or to
+  // any province-comparison chart elsewhere on this tab (they show all provinces at once).
+  const gProvSelect = document.getElementById('global-province-select');
+  Object.keys(monthly.province_monthly_cases).sort().forEach(p=>{
+    const opt = document.createElement('option'); opt.value = p; opt.textContent = p;
+    gProvSelect.appendChild(opt);
+  });
+  const gFromYear = document.getElementById('global-from-year');
+  const gToYear = document.getElementById('global-to-year');
+  const gFromMonth = document.getElementById('global-from-month');
+  const gToMonth = document.getElementById('global-to-month');
+  histYears.forEach(y=>{
+    [gFromYear, gToYear].forEach(sel=>{ const o=document.createElement('option'); o.value=y; o.textContent=y; sel.appendChild(o); });
+  });
+  MONTH_LABELS.forEach((m,i)=>{
+    [gFromMonth, gToMonth].forEach(sel=>{ const o=document.createElement('option'); o.value=i+1; o.textContent=m; sel.appendChild(o); });
+  });
+  // Sensible default range: Jan of the year before last, through the latest reported 2026 month
+  const lastReported2026 = (()=>{
+    const rec = tc2026.national_total_2026;
+    let last = 0;
+    MONTH_LABELS.forEach((m,i)=>{ const v = rec.monthly[m]; if(v && (v.cases>0 || v.deaths>0)) last = i+1; });
+    return last || 12;
+  })();
+  gFromYear.value = 2026; gFromMonth.value = 1;
+  gToYear.value = 2026; gToMonth.value = lastReported2026;
+
+  // Province Ranking — Incidence Rate or Cases, combinable across selected years (matches the
+  // "Province ranking" reference design: horizontal bars, grey ghost bar = case count on its own
+  // scale, dashed line = national rate for the same period).
+  const provYears = myr.years.slice().sort((a,b)=>b-a); // 2026, 2025, ... 2018
+  const provYearDD = buildYearDropdown('province-chart-year-dropdown', provYears, [2026], ()=>renderProvinceChart());
+  const provAllNames = [...nat.provinces].sort((a,b)=>a.province.localeCompare(b.province)).map(p=>p.province);
+  const provFilterDD = buildMultiSelectDropdown('province-chart-province-dropdown', provAllNames, provAllNames, ()=>renderProvinceChart(), 'All 25 provinces');
+
+  function irForYear(abbrevProv, year){
+    const full = myr.name_map[abbrevProv];
+    const series = myr.province_series[full];
+    const cases = (series && series.cases[String(year)]) || 0;
+    const pop = (BUNDLE.full_population_2018_2026[full]||{})[String(year)] || 0;
+    return { cases, population: pop, ir: pop ? +(cases/pop*100000).toFixed(1) : 0 };
+  }
+  // Bar shading reuses the same 5-stop CHAI choropleth ramp as the maps/heatmap, scaled to the
+  // min/max of whatever's actually shown — matches the reference's relative ranking look, rather
+  // than the Risk Map's fixed absolute thresholds (which made most bars look the same dark shade here).
+  function hexToRgbTriple(hex){
+    const h = hex.replace('#','');
+    const full = h.length===3 ? h.split('').map(c=>c+c).join('') : h;
+    return [parseInt(full.substring(0,2),16), parseInt(full.substring(2,4),16), parseInt(full.substring(4,6),16)];
+  }
+  function irGradientColor(value, minV, maxV){
+    const t = maxV>minV ? (value-minV)/(maxV-minV) : 1;
+    const stops = PALETTE.ramp.map((hex,i)=>({t: i/(PALETTE.ramp.length-1), c: hexToRgbTriple(hex)}));
+    let lo = stops[0], hi = stops[stops.length-1];
+    for(let i=0;i<stops.length-1;i++){ if(t>=stops[i].t && t<=stops[i+1].t){ lo=stops[i]; hi=stops[i+1]; break; } }
+    const localT = (hi.t>lo.t) ? (t-lo.t)/(hi.t-lo.t) : 0;
+    const r = Math.round(lo.c[0] + (hi.c[0]-lo.c[0])*localT);
+    const g = Math.round(lo.c[1] + (hi.c[1]-lo.c[1])*localT);
+    const b = Math.round(lo.c[2] + (hi.c[2]-lo.c[2])*localT);
+    return `rgb(${r},${g},${b})`;
+  }
+
+  let provinceChartIR = null, provinceChartCases = null;
+  function renderOneProvincePanel(metric, years, selectedProvinces){
+    const suffix = metric==='ir' ? 'ir' : 'cases';
+    const provCanvas = document.getElementById('chart-province-'+suffix);
+    let chart = metric==='ir' ? provinceChartIR : provinceChartCases;
+    if(years.length === 0 || selectedProvinces.size === 0){
+      if(chart){ chart.destroy(); chart = null; }
+      provCanvas.parentElement.style.height = '80px';
+      if(metric==='ir') provinceChartIR = chart; else provinceChartCases = chart;
+      return null;
+    }
+    const primaryYear = years[0]; // most recent selected year drives sort order
+    let rows = [...nat.provinces].filter(p=>selectedProvinces.has(p.province)).map(p=>{
+      const byYear = {};
+      years.forEach(y=>{ byYear[y] = irForYear(p.province, y); });
+      return { province: p.province, byYear };
+    });
+    let provSortOrder = 'desc';
+    const sortBtn = document.querySelector('#province-chart-sort-toggle .seg-btn.active');
+    if(sortBtn) provSortOrder = sortBtn.dataset.sort;
+    if(provSortOrder === 'az'){
+      rows.sort((a,b)=> a.province.localeCompare(b.province));
+    } else {
+      rows.sort((a,b)=>{
+        const av = metric==='ir' ? a.byYear[primaryYear].ir : a.byYear[primaryYear].cases;
+        const bv = metric==='ir' ? b.byYear[primaryYear].ir : b.byYear[primaryYear].cases;
+        return provSortOrder==='asc' ? av-bv : bv-av;
+      });
+    }
+
+    provCanvas.parentElement.style.width = '100%';
+    provCanvas.parentElement.style.height = Math.max(160, 26 + rows.length*(20+years.length*2)) + 'px';
+    if(chart) chart.destroy();
+
+    // Dark-to-light gradient keyed to this panel's own metric value range.
+    const allValues = rows.flatMap(r=>years.map(y=> metric==='ir' ? r.byYear[y].ir : r.byYear[y].cases));
+    const valMinMax = { min: Math.min(...allValues), max: Math.max(...allValues) };
+    const datasets = years.map(y=>({
+      label: metric==='ir' ? `IR ${y}` : `Cases ${y}`,
+      data: rows.map(r=> metric==='ir' ? r.byYear[y].ir : r.byYear[y].cases),
+      backgroundColor: rows.map(r=> irGradientColor(metric==='ir' ? r.byYear[y].ir : r.byYear[y].cases, valMinMax.min, valMinMax.max)),
+      barPercentage: years.length>1 ? 0.72 : 0.6, categoryPercentage:0.8
+    }));
+
+    // Value label at the end of each bar, light-weight font (not bold) so it reads as data,
+    // not as another heading competing with the axis.
+    const barValueLabelPlugin = {
+      id: 'barValueLabel-'+suffix,
+      afterDatasetsDraw(c){
+        const ctx = c.ctx;
+        ctx.save();
+        ctx.font = '400 10.5px Arial';
+        ctx.fillStyle = PALETTE.textMuted;
+        ctx.textBaseline = 'middle';
+        c.data.datasets.forEach((ds, di)=>{
+          const meta = c.getDatasetMeta(di);
+          meta.data.forEach((bar, i)=>{
+            const val = ds.data[i];
+            if(val==null) return;
+            const text = metric==='ir' ? (val>=10 ? fmt(Math.round(val)) : val.toFixed(1)) : fmt(Math.round(val));
+            ctx.textAlign = 'left';
+            ctx.fillText(text, bar.x + 4, bar.y);
+          });
+        });
+        ctx.restore();
+      }
+    };
+    chart = new Chart(provCanvas, {
+      type: 'bar',
+      data:{ labels: rows.map(r=>r.province), datasets },
+      options:{
+        indexAxis: 'y',
+        responsive:true, maintainAspectRatio:false,
+        plugins:{legend: years.length>1 ? {position:'bottom'} : {display:false}},
+        scales:{
+          x:{ beginAtZero:true, title:{display:true, text: metric==='ir' ? 'IR per 100,000' : 'Cases'} },
+          y:{ ticks:{autoSkip:false} }
+        }
+      },
+      plugins: [barValueLabelPlugin]
+    });
+    if(metric==='ir') provinceChartIR = chart; else provinceChartCases = chart;
+    return { rows, primaryYear };
+  }
+  function renderProvinceChart(){
+    const years = provYearDD.getSelected().slice().sort((a,b)=>b-a); // most recent first
+    const selectedProvinces = new Set(provFilterDD.getSelected());
+    const noteEl = document.getElementById('province-chart-note');
+    const irResult = renderOneProvincePanel('ir', years, selectedProvinces);
+    const casesResult = renderOneProvincePanel('cases', years, selectedProvinces);
+    if(!irResult || !casesResult){
+      noteEl.textContent = years.length === 0 ? 'Pick at least one year.' : 'Pick at least one province to display.';
+      return;
+    }
+    const { rows, primaryYear } = irResult;
+    const totalCasesPrimary = rows.reduce((s,r)=>s+r.byYear[primaryYear].cases,0);
+    const totalPopPrimary = rows.reduce((s,r)=>s+r.byYear[primaryYear].population,0);
+    const nationalIR = totalPopPrimary ? +(totalCasesPrimary/totalPopPrimary*100000).toFixed(1) : null;
+    const topIR = [...rows].sort((a,b)=>b.byYear[primaryYear].ir-a.byYear[primaryYear].ir)[0];
+    const topCases = [...rows].sort((a,b)=>b.byYear[primaryYear].cases-a.byYear[primaryYear].cases)[0];
+    const yearsLabel = years.length>1 ? `${primaryYear} vs ${years.slice(1).join(', ')}` : String(primaryYear);
+    noteEl.textContent = `${yearsLabel}: ${rows.length} of 25 provinces shown. National IR: ${fmt(nationalIR)} per 100,000. Highest IR: ${topIR.province} (${fmt(topIR.byYear[primaryYear].ir)} per 100,000). Highest cases: ${topCases.province} (${fmt(topCases.byYear[primaryYear].cases)}).`;
+  }
+  document.querySelectorAll('#province-chart-sort-toggle .seg-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#province-chart-sort-toggle .seg-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      renderProvinceChart();
+    });
+  });
+  renderProvinceChart();
+
+  // Deaths by Province — count, mortality rate, or case fatality rate, combinable across
+  // selected years. Provinces with zero recorded deaths are named in a footer note instead of
+  // drawn as empty bars (matches the "Deaths by province" reference design).
+  const deathsCanvas = document.getElementById('chart-deaths');
+  let deathsChart = null;
+  const deathsYearDD = buildYearDropdown('deaths-chart-year-dropdown', provYears, [2026], ()=>renderDeathsChart());
+
+  function statsForYear(abbrevProv, year){
+    const full = myr.name_map[abbrevProv];
+    const series = myr.province_series[full];
+    const cases = (series && series.cases[String(year)]) || 0;
+    const deaths = (series && series.deaths[String(year)]) || 0;
+    const population = (BUNDLE.full_population_2018_2026[full]||{})[String(year)] || 0;
+    const mortality = population ? +(deaths/population*100000).toFixed(2) : null;
+    const cfr = cases>=20 ? +(deaths/cases*100).toFixed(2) : null; // suppressed below 20 cases
+    return { cases, deaths, population, mortality, cfr };
+  }
+  // Deaths-by-year colors now come from the shared colorForYear() helper (single palette source).
+
+  function renderDeathsChart(){
+    const metric = document.querySelector('input[name="deaths-chart-metric"]:checked').value; // count | mortality | cfr
+    const years = deathsYearDD.getSelected().slice().sort((a,b)=>b-a); // most recent first
+    const noteEl = document.getElementById('deaths-chart-note');
+    const zeroNoteEl = document.getElementById('deaths-chart-zero-note');
+    const suppressedNoteEl = document.getElementById('deaths-chart-suppressed-note');
+    const titleEl = document.getElementById('deaths-chart-title');
+    if(years.length === 0){
+      if(deathsChart){ deathsChart.destroy(); deathsChart = null; }
+      deathsCanvas.parentElement.style.height = '80px';
+      noteEl.textContent = 'Pick at least one year.';
+      zeroNoteEl.textContent = '';
+      suppressedNoteEl.textContent = '';
+      document.getElementById('deaths-chart-mode-desc').textContent = '';
+      document.getElementById('deaths-chart-filters-note').innerHTML = '';
+      return;
+    }
+    const primaryYear = years[0];
+    const metricKey = metric==='mortality' ? 'mortality' : metric==='cfr' ? 'cfr' : 'deaths';
+    const metricLabel = metric==='mortality' ? 'Mortality rate (per 100,000)' : metric==='cfr' ? 'Case fatality rate (%)' : 'Deaths';
+    titleEl.innerHTML = `<span class="vno">N6</span>Deaths by Province — ${metricLabel} — ${years.length>1 ? primaryYear+' vs '+years.slice(1).join(', ') : primaryYear}`;
+
+    // Everything below (ranking, zero/suppressed notes, insight sentence) is driven by the
+    // primary (most recent selected) year — additional years shown alongside are for visual
+    // comparison, same idea as the Province Ranking chart's "primary year drives the story".
+    const rows = nat.provinces.map(p=>{
+      const byYear = {}; years.forEach(y=>{ byYear[y] = statsForYear(p.province, y); });
+      return { province: p.province, byYear, ...byYear[primaryYear] };
+    });
+    const suppressedCFR = metric==='cfr' ? rows.filter(r=>r.deaths>0 && r.cfr==null) : [];
+    const withDeaths = rows.filter(r=>r.deaths>0 && (metric!=='cfr' || r.cfr!=null));
+    const zeroDeath = rows.filter(r=>r.deaths===0);
+    const ranked = [...withDeaths].sort((a,b)=>(b[metricKey]||0)-(a[metricKey]||0));
+
+    deathsCanvas.parentElement.style.width = '100%';
+    deathsCanvas.parentElement.style.height = Math.max(160, 26 + ranked.length*(20+years.length*3)) + 'px';
+    if(deathsChart) deathsChart.destroy();
+
+    if(ranked.length === 0){
+      noteEl.textContent = metric==='cfr'
+        ? `No provinces have 20+ combined cases in ${primaryYear} to compute a reliable case fatality rate.`
+        : 'No deaths recorded in this selection.';
+      zeroNoteEl.textContent = '';
+      suppressedNoteEl.textContent = '';
+      document.getElementById('deaths-chart-mode-desc').textContent = '';
+      document.getElementById('deaths-chart-filters-note').innerHTML = '';
+      return;
+    }
+
+    // Dark-to-light gradient keyed to this chart's own metric value range — same treatment as
+    // the Province Ranking (N5) bars, so relative-ranking shading reads consistently everywhere.
+    const allValues = ranked.flatMap(r=>years.map(y=> r.byYear[y][metricKey] || 0));
+    const valMinMax = { min: Math.min(...allValues), max: Math.max(...allValues) };
+    const datasets = years.map(y=>({
+      label: `${metricLabel} ${y}`,
+      data: ranked.map(r=>r.byYear[y][metricKey]),
+      backgroundColor: ranked.map(r=> irGradientColor(r.byYear[y][metricKey] || 0, valMinMax.min, valMinMax.max)),
+      barPercentage: years.length>1 ? 0.72 : 0.6, categoryPercentage:0.8
+    }));
+
+    const totalDeaths = withDeaths.reduce((s,p)=>s+p.deaths,0);
+    const totalCasesAll = rows.reduce((s,p)=>s+p.cases,0);
+    const totalDeathsAll = rows.reduce((s,p)=>s+p.deaths,0);
+    const totalPop = rows.reduce((s,p)=>s+p.population,0);
+    const nationalMortality = totalPop ? +(totalDeathsAll/totalPop*100000).toFixed(2) : null;
+    const nationalCFR = totalCasesAll>=20 ? +(totalDeathsAll/totalCasesAll*100).toFixed(2) : null;
+
+    // Selected province (from the global filter) gets a bold label + shaded row, matching the
+    // reference design's "click a row to filter" highlight — we only support one at a time here.
+    const selectedProv = gProvSelect.value !== '__ALL__' ? gProvSelect.value : null;
+    const rowHighlightPlugin = {
+      id: 'rowHighlight-'+Math.random().toString(36).slice(2),
+      beforeDatasetsDraw(chart){
+        if(!selectedProv) return;
+        const yScale = chart.scales.y, xScale = chart.scales.x, ctx = chart.ctx;
+        ranked.forEach((r,i)=>{
+          if(r.province !== selectedProv) return;
+          const yPix = yScale.getPixelForValue(i);
+          const half = yScale.height / ranked.length / 2;
+          ctx.save();
+          ctx.fillStyle = hexToRgba(PALETTE.turquoise, 0.08);
+          ctx.fillRect(xScale.left, yPix-half, xScale.width, half*2);
+          ctx.restore();
+        });
+      }
+    };
+    // Bar-end value labels — bold primary value, grey secondary context. Only drawn for the
+    // primary year's bars when comparing multiple years, to avoid a wall of overlapping text.
+    const barLabelPlugin = {
+      id: 'barLabels-'+Math.random().toString(36).slice(2),
+      afterDatasetsDraw(chart){
+        const meta = chart.getDatasetMeta(0); // primary year is always dataset 0 (years sorted desc)
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+        ranked.forEach((r,i)=>{
+          const bar = meta.data[i];
+          if(!bar) return;
+          const st = r.byYear[primaryYear];
+          const primary = metric==='count' ? fmt(st.deaths) : metric==='mortality' ? String(st.mortality) : st.cfr+'%';
+          const secondary = metric==='count' ? ` of ${fmt(st.cases)} cases`
+            : metric==='mortality' ? ` per 100,000 · ${fmt(st.deaths)}d`
+            : ` · ${fmt(st.deaths)}d`;
+          let x = bar.x + 6;
+          ctx.font = '700 9.2px Arial';
+          ctx.fillStyle = PALETTE.textBody;
+          ctx.fillText(primary, x, bar.y);
+          x += ctx.measureText(primary).width;
+          ctx.font = '400 9.2px Arial';
+          ctx.fillStyle = PALETTE.textMuted;
+          ctx.fillText(secondary, x, bar.y);
+        });
+        ctx.restore();
+      }
+    };
+
+    // Rich hover tooltip (reusing the same dark popup used by the KPI cards) + click-to-filter,
+    // matching the reference design's per-bar detail box. Shows whichever year's bar is hovered.
+    let deathsTipEl = document.getElementById('kpi-tooltip');
+    if(!deathsTipEl){
+      deathsTipEl = document.createElement('div');
+      deathsTipEl.id = 'kpi-tooltip';
+      deathsTipEl.className = 'kpi-tooltip';
+      document.body.appendChild(deathsTipEl);
+    }
+    function deathsTipHTML(r, year){
+      const st = r.byYear[year];
+      const yearTotalDeaths = ranked.reduce((s,p)=>s+p.byYear[year].deaths,0);
+      const pctOfScope = yearTotalDeaths ? (st.deaths/yearTotalDeaths*100).toFixed(1) : '0.0';
+      const abbrev = abbrevFor(r.province) || r.province;
+      const mrText = st.mortality!=null ? `${st.mortality} per 100,000` : 'n/a';
+      const cfrText = st.cfr!=null ? `${st.cfr}%` : 'suppressed (&lt;20 cases)';
+      return `<b>${r.province}</b> <span class="d">(${abbrev}) — ${year}</span><hr>`+
+        `Deaths <b>${fmt(st.deaths)}</b> — ${pctOfScope}% of the ${fmt(yearTotalDeaths)} in ${year}<br>`+
+        `Cases <b>${fmt(st.cases)}</b> · population ${fmt(st.population)}<hr>`+
+        `Mortality rate <b>${mrText}</b><br>`+
+        `Case fatality rate <b>${cfrText}</b><hr>`+
+        `<span class="d">Click to ${r.province===selectedProv?'clear':'add to'} the province filter</span>`;
+    }
+
+    deathsChart = new Chart(deathsCanvas, {
+      type: 'bar',
+      data:{ labels: ranked.map(p=>p.province), datasets },
+      options:{
+        indexAxis: 'y',
+        responsive:true, maintainAspectRatio:false,
+        layout:{ padding:{right: metric==='count'?90:110} },
+        plugins:{legend:{display: true}, tooltip:{enabled:false}},
+        onHover:(evt, elements)=>{
+          if(!elements.length){ deathsTipEl.style.display = 'none'; return; }
+          const el = elements[0];
+          const r = ranked[el.index];
+          const year = years[el.datasetIndex];
+          deathsTipEl.innerHTML = deathsTipHTML(r, year);
+          deathsTipEl.style.display = 'block';
+          deathsTipEl.style.left = (evt.native.clientX + 14) + 'px';
+          deathsTipEl.style.top = (evt.native.clientY + window.scrollY + 10) + 'px';
+        },
+        onClick:(evt, elements)=>{
+          if(!elements.length) return;
+          const r = ranked[elements[0].index];
+          gProvSelect.value = (r.province === selectedProv) ? '__ALL__' : r.province;
+          gProvSelect.dispatchEvent(new Event('change'));
+        },
+        scales:{
+          x:{ beginAtZero:true, title:{display:true, text: metric==='mortality' ? 'Deaths per 100,000 population' : metric==='cfr' ? 'Deaths per 100 cases (%)' : 'Deaths'} },
+          y:{ ticks:{autoSkip:false, font:{size:10.5, weight: ranked.map(r=>r.province===selectedProv?'700':'400')}, color: ranked.map(r=>r.province===selectedProv?PALETTE.turquoise:PALETTE.textMuted)} }
+        }
+      },
+      plugins: [rowHighlightPlugin, barLabelPlugin]
+    });
+    deathsCanvas.onmouseleave = ()=>{ deathsTipEl.style.display = 'none'; };
+
+    const topProv = ranked[0];
+    const yearsLabel = years.length>1 ? `${primaryYear} vs ${years.slice(1).join(', ')}` : String(primaryYear);
+
+    // Mode-specific description, matching the reference's per-metric framing
+    const modeDescEl = document.getElementById('deaths-chart-mode-desc');
+    modeDescEl.textContent = metric==='count'
+      ? 'Absolute burden — where the most people died. Driven partly by province size.'
+      : metric==='mortality'
+      ? 'Mortality rate, population-adjusted — where a resident was most likely to die of dengue.'
+      : 'Deaths per 100 reported cases — how lethal the reported caseload was. Suppressed below 20 cases, where it is arithmetic rather than signal.';
+
+    // Multi-metric insight: compute the top province for all three metrics at once (primary
+    // year), regardless of which one is currently displayed — they don't agree, on purpose.
+    const byMortality = [...rows].filter(r=>r.deaths>0).sort((a,b)=>(b.mortality||0)-(a.mortality||0))[0];
+    const byCFR = [...rows].filter(r=>r.deaths>0 && r.cfr!=null).sort((a,b)=>b.cfr-a.cfr)[0];
+    const byCount = [...rows].sort((a,b)=>b.deaths-a.deaths)[0];
+    let insightText = '';
+    if(byCount && byCount.deaths>0){
+      insightText = `${byCount.province} reported the most deaths (${fmt(byCount.deaths)} of ${fmt(byCount.cases)} cases)`;
+      if(byMortality) insightText += `, but ${byMortality.province} has the highest mortality rate (${byMortality.mortality} per 100,000)`;
+      if(byCFR) insightText += ` and ${byCFR.province} the highest case fatality rate (${byCFR.cfr}%)`;
+      insightText += `. Three metrics, three different provinces at the top (${primaryYear}) — absolute burden, population risk and clinical lethality are separate questions, and answering one does not answer the others.`;
+    }
+
+    if(metric==='mortality'){
+      noteEl.textContent = `${yearsLabel}: ${primaryYear} national mortality rate ${nationalMortality} per 100,000. Highest: ${topProv.province} (${topProv.mortality} per 100,000, ${fmt(topProv.deaths)} death(s)). ${insightText}`;
+    } else if(metric==='cfr'){
+      noteEl.textContent = `${yearsLabel}: ${primaryYear} national CFR ${nationalCFR!=null?nationalCFR+'%':'n/a (fewer than 20 cases nationally)'}. Highest: ${topProv.province} (${topProv.cfr}%, ${fmt(topProv.deaths)} of ${fmt(topProv.cases)} cases). CFR suppressed below 20 cases per province. ${insightText}`;
+    } else {
+      noteEl.textContent = `${fmt(totalDeaths)} deaths recorded across ${withDeaths.length} of ${rows.length} provinces in ${primaryYear}. ${insightText}`;
+    }
+
+    // Filters-applied + source citation, matching the reference's transparency footer
+    const filtersParts = [`years ${yearsLabel}`];
+    if(selectedProv) filtersParts.push(`province ${selectedProv}`);
+    document.getElementById('deaths-chart-filters-note').innerHTML =
+      `Filters applied: ${filtersParts.join('; ')}.<br>` +
+      `Source: Dengue_Master_Data_Entry.xlsx — National DHF Bulletin (2018–2026), Battambang line-list (W1–27, 2026). Population: NIS Population Projection 2020–2033 Table 4.27.1; 2018–2019 back-extrapolated.<br>` +
+      `2026 is year-to-date January–July. CFR suppressed below 20 cases.`;
+
+    if(suppressedCFR.length){
+      const list = suppressedCFR.sort((a,b)=>b.deaths-a.deaths).map(p=>`${p.province} (${fmt(p.deaths)} death(s), ${fmt(p.cases)} cases)`).join(', ');
+      suppressedNoteEl.textContent = `${suppressedCFR.length} of ${rows.length} provinces had deaths but fewer than 20 combined cases in ${primaryYear}, so no reliable CFR is shown for them: ${list}. A rate we can't compute honestly isn't drawn as a bar — switch to Death count or Mortality rate to see them.`;
+    } else {
+      suppressedNoteEl.textContent = '';
+    }
+    if(zeroDeath.length){
+      const totalZeroCases = zeroDeath.reduce((s,p)=>s+p.cases,0);
+      const zeroList = zeroDeath.sort((a,b)=>b.cases-a.cases).map(p=>`${p.province} (${fmt(p.cases)})`).join(', ');
+      zeroNoteEl.textContent = `${zeroDeath.length} of ${rows.length} provinces reported no deaths in ${primaryYear}, on ${fmt(totalZeroCases)} cases between them: ${zeroList}. They're named here rather than drawn as empty bars — zero reported is not proof of zero occurred.`;
+    } else {
+      zeroNoteEl.textContent = '';
+    }
+  }
+  document.querySelectorAll('input[name="deaths-chart-metric"]').forEach(r=>r.addEventListener('change', renderDeathsChart));
+  gProvSelect.addEventListener('change', renderDeathsChart);
+  renderDeathsChart();
+
+  // Pyramid layout, matching B2 (Age-Sex Pyramid) exactly: one series runs left as negative
+  // values, the other runs right as positive values, so the shape communicates the year-over-year
+  // shift at a glance. Axis ticks and tooltip both show the absolute (unsigned) value.
+  new Chart(document.getElementById('chart-age'), {
+    type:'bar',
+    data:{ labels: nat.age_cases.map(a=>a.age_group),
+      datasets:[
+        {label:'2025', data: nat.age_cases.map(a=>-a.cases2025), backgroundColor: COLORS[0]},
+        {label:'2026', data: nat.age_cases.map(a=>a.cases2026), backgroundColor: COLORS[1]}
+      ]},
+    options:{
+      indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'top'},
+        tooltip:{ callbacks:{ label:(ctx)=> `${ctx.dataset.label}: ${fmt(Math.abs(ctx.parsed.x))}` } }
+      },
+      scales:{
+        x:{ ticks:{ callback:(v)=>fmt(Math.abs(v)) }, title:{display:true, text:'Cases'} },
+        y:{ stacked:false }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('chart-severity-age'), {
+    type:'bar',
+    data:{ labels: nat.diag_age.map(a=>a.age_group),
+      datasets:[
+        {label:'DF', data: nat.diag_age.map(a=>a.DF), backgroundColor: COLORS[0]},
+        {label:'DHF', data: nat.diag_age.map(a=>a.DHF), backgroundColor: COLORS[1]},
+        {label:'DSS', data: nat.diag_age.map(a=>a.DSS), backgroundColor: COLORS[3]}
+      ]},
+    options:{ responsive:true, plugins:{legend:{position:'top'}}, scales:{x:{stacked:true}, y:{stacked:true, beginAtZero:true}} }
+  });
+
+  function monthIndex(year, month){ return year*12 + (month-1); }
+  function getGlobalRange(){
+    return {
+      province: gProvSelect.value,
+      fromIdx: monthIndex(parseInt(gFromYear.value), parseInt(gFromMonth.value)),
+      toIdx: monthIndex(parseInt(gToYear.value), parseInt(gToMonth.value))
+    };
+  }
+  function monthsInRange(fromIdx, toIdx){
+    const out = [];
+    for(let idx=fromIdx; idx<=toIdx; idx++){
+      out.push({ year: Math.floor(idx/12), month: (idx%12)+1 });
+    }
+    return out;
+  }
+  // Real cases/deaths for one (province, year, month) — null means genuinely not-yet-reported (2026 only)
+  function getCasesDeaths(prov, year, month){
+    const mAbbr = MONTH_LABELS[month-1];
+    if(year === 2026){
+      const rec = prov==='__ALL__' ? tc2026.national_total_2026 : tc2026.provinces_2026.find(p=>p.province===abbrevFor(prov));
+      if(!rec) return {cases:null, deaths:null};
+      const v = rec.monthly[mAbbr];
+      const isFuture = month >= 8 && v && v.cases === 0 && v.deaths === 0;
+      return (v && !isFuture) ? {cases:v.cases, deaths:v.deaths} : {cases:null, deaths:null};
+    }
+    const src = prov==='__ALL__' ? monthly.national_monthly_cases : (monthly.province_monthly_cases[prov]||{});
+    const yr = src[String(year)] || {};
+    return {cases: yr[String(month)] || 0, deaths: (prov==='__ALL__' ? monthly.national_monthly_deaths : (monthly.province_monthly_deaths[prov]||{}))[String(year)]?.[String(month)] || 0};
+  }
+  function rangeLabel(range){
+    const f = MONTH_LABELS[range.fromIdx%12] + ' ' + Math.floor(range.fromIdx/12);
+    const t = MONTH_LABELS[range.toIdx%12] + ' ' + Math.floor(range.toIdx/12);
+    return `${f} to ${t}`;
+  }
+
+  // ---- National Case & Death Trend — by Month (multi-year overlay, own independent controls) ----
+  // Monthly-overlay year colors now come from the shared colorForYear() helper.
+  const provSelect = document.getElementById('trend-province-select');
+  Object.keys(monthly.province_monthly_cases).sort().forEach(p=>{
+    const opt = document.createElement('option'); opt.value = p; opt.textContent = p;
+    provSelect.appendChild(opt);
+  });
+  const yearDD = buildYearDropdown('trend-year-dropdown', histYears, [2024,2025,2026], ()=>renderTrendChart());
+
+  function getMonthlySeries(prov, year){
+    if(year === 2026){
+      const rec = prov==='__ALL__' ? tc2026.national_total_2026 : tc2026.provinces_2026.find(p=>p.province===abbrevFor(prov));
+      if(!rec) return MONTH_LABELS.map(()=>null);
+      return MONTH_LABELS.map(m => {
+        const v = rec.monthly[m];
+        if(!v) return null;
+        const monthIdx = MONTH_LABELS.indexOf(m);
+        const isFuture = monthIdx >= 7 && v.cases === 0 && v.deaths === 0;
+        return isFuture ? null : v.cases;
+      });
+    }
+    const src = prov==='__ALL__' ? monthly.national_monthly_cases : (monthly.province_monthly_cases[prov]||{});
+    const yr = src[String(year)] || {};
+    return MONTH_LABELS.map((_,i)=> yr[String(i+1)] || 0);
+  }
+  let trendChart = null;
+  let n4Metric = 'cases';
+  function renderTrendChart(){
+    const prov = provSelect.value;
+    const selectedYears = yearDD.getSelected();
+    const datasets = selectedYears.map(y=>{
+      const casesSeries = getMonthlySeries(prov, y);
+      const series = n4Metric === 'ir'
+        ? casesSeries.map(c=>{ const pop = popForYear(prov, y); return pop ? +(c/pop*100000).toFixed(1) : null; })
+        : casesSeries;
+      return {
+        label: y===2026 ? '2026 (partial, through last reported month)' : String(y), data: series,
+        borderColor: colorForYear(y), backgroundColor: colorForYear(y), fill:false, tension:.3, pointRadius:3,
+        borderWidth: y===2026 ? 3 : 2, spanGaps:false
+      };
+    });
+    if(trendChart) trendChart.destroy();
+    trendChart = new Chart(document.getElementById('chart-trend'), {
+      type:'line',
+      data:{ labels: MONTH_LABELS, datasets },
+      options:{ responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{legend:{position:'top'}, tooltip:{ mode:'index', intersect:false }},
+        scales:{ y:{ beginAtZero:true, title:{display:true, text: n4Metric==='ir'?'IR per 100,000':'Cases'} } } }
+    });
+    const ytdNote = document.getElementById('trend-2026-note');
+    if(prov==='__ALL__'){
+      ytdNote.textContent = `2026 total so far (through last reported month): ${fmt(nat.total.cases2026)} cases, ${fmt(nat.total.deaths2026)} deaths nationally. Later months in the chart are left blank, not zero — they simply haven't been reported yet.`;
+    } else {
+      const abbrev = abbrevFor(prov);
+      const p2026 = abbrev ? nat.provinces.find(x=>x.province===abbrev) : null;
+      ytdNote.textContent = p2026 ? `2026 total so far for ${prov}: ${fmt(p2026.cases2026)} cases, ${fmt(p2026.deaths2026)} deaths. Later months are left blank, not zero — not yet reported.` : `No 2026 figure available for ${prov}.`;
+    }
+  }
+  provSelect.addEventListener('change', renderTrendChart);
+  document.querySelectorAll('#n4-metric-toggle .seg-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#n4-metric-toggle .seg-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      n4Metric = btn.dataset.metric;
+      renderTrendChart();
+    });
+  });
+  renderTrendChart();
+
+  // ---- N1: Outbreak Signal — endemic-channel method (mean + 2SD), counts only ----
+  const HIST_YEARS_EPI = [2018,2019,2020,2021,2022,2023,2024,2025];
+  function histValsForMonth(monthNum){
+    // December 2024 was never reported (not zero — genuinely absent), so December's baseline
+    // uses 7 years instead of 8. Every other month uses the full 8.
+    return HIST_YEARS_EPI
+      .filter(y => (monthly.national_monthly_cases[String(y)]||{})[String(monthNum)] !== undefined)
+      .map(y => monthly.national_monthly_cases[String(y)][String(monthNum)]);
+  }
+  const epiChannelMeanSD = MONTH_LABELS.map((m,i)=>{
+    const vals = histValsForMonth(i+1);
+    const n = vals.length;
+    const mean = vals.reduce((a,b)=>a+b,0)/n;
+    const sd = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/n);
+    return { month:m, mean, threshold: mean+2*sd, n };
+  });
+  const epi2026Actual = MONTH_LABELS.map(m=>{
+    const v = tc2026.national_total_2026.monthly[m];
+    const idx = MONTH_LABELS.indexOf(m);
+    const isFuture = idx>=7 && v && v.cases===0 && v.deaths===0;
+    return (v && !isFuture) ? v.cases : null;
+  });
+  const lastReportedIdxEpi = epi2026Actual.reduce((last,v,i)=> v!=null ? i : last, -1);
+
+  function renderEpiChannel(){
+    const channel = epiChannelMeanSD;
+    const aboveMonths = channel.filter((c,i)=>epi2026Actual[i]!=null && epi2026Actual[i]>c.threshold).map(c=>c.month);
+    document.getElementById('chart-epidemic-channel').closest('.card').querySelector('h3').innerHTML =
+      `<span class="vno">N1</span>${aboveMonths.length} month${aboveMonths.length===1?'':'s'} above the mean + 2SD threshold: ${aboveMonths.join(', ')||'none'}`;
+
+    // Red is reserved for an actual epidemic-threshold breach — the reference lines themselves
+    // stay neutral (--text-muted); only breaching points, and the band above the threshold, use it.
+    const pointColors = channel.map((c,i)=> epi2026Actual[i]==null ? 'transparent' : (epi2026Actual[i] > c.threshold ? PALETTE.darkRed : PALETTE.darkBlue));
+    const pointRadii = channel.map((c,i)=> epi2026Actual[i]==null ? 0 : (epi2026Actual[i] > c.threshold ? 6 : 4));
+    const ceilingVal = Math.max(...channel.map(c=>c.threshold), ...epi2026Actual.filter(v=>v!=null)) * 1.3;
+
+    if(window.epiChart) window.epiChart.destroy();
+    window.epiChart = new Chart(document.getElementById('chart-epidemic-channel'), {
+      data:{ labels: channel.map(c=>c.month),
+        datasets:[
+          // ---- Endemic-channel bands: green/gold/red fills at 15% opacity of the base token ----
+          // Each band fills relative to the PREVIOUS dataset's curve (by array index), so they
+          // stack cleanly: 0→mean (safe), mean→threshold (watch), threshold→ceiling (epidemic).
+          {type:'line', label:'_meanBase', data: channel.map(c=>c.mean),
+            borderWidth:0, pointRadius:0, backgroundColor:hexToRgba(PALETTE.green,0.15), fill:'origin', tension:.35, order:20},
+          {type:'line', label:'_thresholdBase', data: channel.map(c=>c.threshold),
+            borderWidth:0, pointRadius:0, backgroundColor:hexToRgba(PALETTE.gold,0.15), fill:0, tension:.35, order:19},
+          {type:'line', label:'_ceiling', data: channel.map(()=>ceilingVal),
+            borderWidth:0, pointRadius:0, backgroundColor:hexToRgba(PALETTE.darkRed,0.15), fill:1, tension:.35, order:18},
+          // ---- Reference lines: neutral, dashed, 1px — the breach signal lives in the points/bands, not the line ----
+          {type:'line', label:'Threshold (mean + 2SD)', data: channel.map(c=>c.threshold),
+            borderColor:PALETTE.textMuted, borderDash:[6,4], backgroundColor:'transparent', borderWidth:1,
+            pointRadius:0, pointHoverRadius:5, pointHitRadius:12, tension:.35, fill:false, order:3},
+          {type:'line', label:'Historical mean', data: channel.map(c=>c.mean),
+            borderColor:PALETTE.textMuted, borderDash:[6,4], backgroundColor:'transparent', borderWidth:1,
+            pointRadius:0, pointHoverRadius:5, pointHitRadius:12, tension:.35, fill:false, order:2},
+          {type:'line', label:'Observed 2026', data: epi2026Actual,
+            borderColor:PALETTE.darkBlue, backgroundColor:pointColors, borderWidth:2.5,
+            pointRadius:pointRadii, pointHoverRadius:7, pointBackgroundColor:pointColors, pointBorderColor:pointColors,
+            tension:.15, fill:false, spanGaps:false, order:1}
+        ]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{
+          legend:{position:'bottom', labels:{usePointStyle:false, boxWidth:24,
+            filter: item => !['_meanBase','_thresholdBase','_ceiling'].includes(item.text)}},
+          tooltip:{ mode:'index', intersect:false, filter: ctx => !['_meanBase','_thresholdBase','_ceiling'].includes(ctx.dataset.label), callbacks:{
+            label: ctx => ctx.raw==null ? `${ctx.dataset.label}: not reported` : `${ctx.dataset.label}: ${Math.round(ctx.raw).toLocaleString()}`
+          } }
+        },
+        scales:{ y:{ beginAtZero:true, title:{display:true, text:'Cases'} } }
+      }
+    });
+    document.getElementById('epi-legend').style.display = 'none';
+
+    const shortMonths = channel.filter(c=>c.n < 8).map(c=>`${c.month} (${c.n} yrs)`);
+    document.getElementById('epidemic-channel-note').innerHTML =
+      `Counts, not rates — the threshold is defined on counts. Baseline is 8 prior years (2018-2025), built only from months that actually reported, so each month rests on between 7 and 8 years.`+
+      (shortMonths.length ? `<br>Shorter baseline: ${shortMonths.join(', ')} — December 2024 was never reported.` : '');
+  }
+  renderEpiChannel();
+
+  // ---- L2: Cumulative cases, 2026 vs. selected year(s) (counts only, never rates) ----
+  const cumulAvailableYears = myr.national_yearly.map(y=>y.year).filter(y=>y!==2026).sort((a,b)=>b-a);
+  const cumulYearDD = buildYearDropdown('cumul-year-dropdown', cumulAvailableYears, [2023], ()=>renderCumulativeChart());
+  let cumulChart = null;
+  function cumulativeSeriesFor(year){
+    let running = 0;
+    return MONTH_LABELS.map((m,i)=>{
+      const monthNum = i+1;
+      let val;
+      if(year === 2026){
+        const v = tc2026.national_total_2026.monthly[m];
+        const isFuture = i>=7 && v && v.cases===0 && v.deaths===0;
+        val = (v && !isFuture) ? v.cases : undefined;
+      } else {
+        val = (monthly.national_monthly_cases[String(year)]||{})[String(monthNum)];
+      }
+      if(val === undefined) return null; // skip unreported months rather than flat-lining through them
+      running += val;
+      return running;
+    });
+  }
+  // Cumulative-comparison year colors now come from the shared colorForYear() helper.
+  function renderCumulativeChart(){
+    const compareYears = cumulYearDD.getSelected().slice().sort((a,b)=>b-a);
+    const series2026 = cumulativeSeriesFor(2026);
+    if(cumulChart) cumulChart.destroy();
+    const datasets = [
+      {label:'2026', data: series2026, borderColor:PALETTE.darkBlue, backgroundColor:'transparent', borderWidth:2.5, pointRadius:3, pointHoverRadius:5, tension:.15, spanGaps:false}
+    ];
+    compareYears.forEach(y=>{
+      datasets.push({label:String(y), data: cumulativeSeriesFor(y), borderColor: colorForYear(y), borderDash:[5,4], backgroundColor:'transparent', borderWidth:2, pointRadius:2, pointHoverRadius:5, tension:.15, spanGaps:false});
+    });
+    cumulChart = new Chart(document.getElementById('chart-cumulative'), {
+      type:'line',
+      data:{ labels: MONTH_LABELS, datasets },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{
+          legend:{position:'bottom'},
+          tooltip:{
+            enabled:true, mode:'index', intersect:false,
+            callbacks:{
+              label: ctx => ctx.raw==null ? `${ctx.dataset.label}: not yet reported` : `${ctx.dataset.label}: ${ctx.raw.toLocaleString()} cumulative cases`
+            }
+          }
+        },
+        scales:{ y:{ beginAtZero:true, title:{display:true, text:'Cumulative cases'} } }
+      }
+    });
+    const total2026 = series2026.filter(v=>v!=null).pop() || 0;
+    const compareTotals = compareYears.map(y=>{
+      const s = cumulativeSeriesFor(y);
+      return `${fmt(s.filter(v=>v!=null).pop() || 0)} in ${y}`;
+    });
+    document.getElementById('cumulative-note').innerHTML = compareTotals.length
+      ? `Through the last reported month, 2026 has accumulated <b>${fmt(total2026)}</b> cases versus ${compareTotals.join(', ')} at the same point.`
+      : `2026 has accumulated <b>${fmt(total2026)}</b> cases so far. Pick at least one year to compare against.`;
+  }
+  renderCumulativeChart();
+
+
+
+  // ---- Yearly national trend (2018-2026) — filtered by province + [fromYear,toYear] ----
+  let yearlyTrendChart = null;
+  let globalFilterTouched = false;
+  let n2Metric = 'cases';
+  function popForYear(province, year){
+    if(province === '__ALL__'){
+      return Object.values(BUNDLE.full_population_2018_2026).reduce((s,p)=>s+(p[String(year)]||0),0);
+    }
+    return (BUNDLE.full_population_2018_2026[province]||{})[String(year)] || 0;
+  }
+  function renderYearlyTrend(){
+    const range = getGlobalRange();
+    // On first load (before the user touches the filter), this chart defaults to the full
+    // 2018-2026 span regardless of the shared filter's own default — it's titled "2018 to 2026"
+    // for a reason. Once the filter is touched, it follows the shared range like everything else.
+    const fromYear = globalFilterTouched ? Math.floor(range.fromIdx/12) : 2018;
+    const toYear = globalFilterTouched ? Math.floor(range.toIdx/12) : 2026;
+    const yearsInRange = myr.national_yearly.map(y=>y.year).filter(y=>y>=fromYear && y<=toYear);
+    let rows;
+    if(range.province === '__ALL__'){
+      rows = myr.national_yearly.filter(y=>yearsInRange.includes(y.year));
+    } else {
+      const series = myr.province_series[range.province];
+      rows = yearsInRange.map(y=>({
+        year: y,
+        cases: (series && series.cases[String(y)]) || 0,
+        deaths: (series && series.deaths[String(y)]) || 0
+      }));
+    }
+    rows = rows.map(r=>{
+      const pop = popForYear(range.province, r.year);
+      return { ...r, ir: pop ? +(r.cases/pop*100000).toFixed(1) : null };
+    });
+    document.getElementById('n2-metric-note').textContent = n2Metric === 'ir'
+      ? 'Full calendar-year totals 2018-2025 (historical line-list) · 2026 is year-to-date, not a full year — read the bar height accordingly. Bars = incidence rate per 100,000 population (left axis), line = deaths (right axis, drawn in front).'
+      : 'Full calendar-year totals 2018-2025 (historical line-list) · 2026 is year-to-date, not a full year — read the bar height accordingly. Bars = cases (left axis), line = deaths (right axis, drawn in front).';
+    if(yearlyTrendChart) yearlyTrendChart.destroy();
+    const hatch2026 = hatchPattern(COLORS[0]);
+    // Elevated-mortality years, called out directly on the chart rather than left for the reader
+    // to spot in a small-multiples deaths line.
+    const HIGH_MORTALITY_YEARS = [2019, 2023, 2025];
+    const yearAnnotationPlugin = {
+      id: 'yearlyAnnotate',
+      afterDatasetsDraw(chart){
+        const meta = chart.getDatasetMeta(0);
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '700 10.5px Arial'; ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.textBody;
+        rows.forEach((r,i)=>{
+          if(!HIGH_MORTALITY_YEARS.includes(r.year)) return;
+          const bar = meta.data[i];
+          if(!bar) return;
+          ctx.fillText('▲ elevated mortality', bar.x, bar.y - 22);
+        });
+        ctx.restore();
+      }
+    };
+    // Bar-end value label, light-weight grey font — reads as data, not another heading.
+    const barValueLabelPluginN2 = {
+      id: 'barValueLabelN2',
+      afterDatasetsDraw(chart){
+        const meta = chart.getDatasetMeta(0);
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '400 10.5px Arial'; ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.textMuted;
+        meta.data.forEach((bar, i)=>{
+          const val = caseValues[i];
+          if(val==null) return;
+          const text = n2Metric==='ir' ? val.toFixed(1) : fmt(Math.round(val));
+          ctx.fillText(text, bar.x, bar.y - 8);
+        });
+        ctx.restore();
+      }
+    };
+    const caseValues = n2Metric === 'ir' ? rows.map(y=>y.ir) : rows.map(y=>y.cases);
+    yearlyTrendChart = new Chart(document.getElementById('chart-trend-yearly'), {
+      data:{ labels: rows.map(y=> y.year===2026 ? '2026 (YTD)' : String(y.year)),
+        datasets:[
+          {type:'bar', label: n2Metric==='ir'?'IR per 100,000':'Cases', data: caseValues, backgroundColor: rows.map(y=>y.year===2026?hatch2026:COLORS[0]), yAxisID:'y', order:2, pointStyle:'rect'},
+          {type:'line', label:'Deaths', data: rows.map(y=>y.deaths), borderColor: COLORS[3], backgroundColor: COLORS[3], yAxisID:'y1', tension:.3, pointRadius:4, borderWidth:3, order:1, pointStyle:'line'}
+        ]},
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'top', labels:{usePointStyle:true}}},
+        scales:{
+          y:{ beginAtZero:true, position:'left', title:{display:true, text: n2Metric==='ir'?'IR per 100,000':'Cases'} },
+          y1:{ beginAtZero:true, position:'right', title:{display:true, text:'Deaths'}, grid:{drawOnChartArea:false}, ticks:{precision:0} }
+        }
+      },
+      plugins: [yearAnnotationPlugin, barValueLabelPluginN2]
+    });
+    const peak = [...rows].sort((a,b)=>b.cases-a.cases)[0];
+    const scopeLabel = range.province === '__ALL__' ? 'Cambodia' : range.province;
+    document.getElementById('trend-yearly-note').textContent = peak
+      ? `${scopeLabel} (${fromYear}-${toYear}): highest year shown is ${peak.year===2026?'2026 (YTD)':peak.year} with ${fmt(peak.cases)} cases and ${fmt(peak.deaths)} deaths.`
+      : 'No years in range.';
+  }
+  document.querySelectorAll('#n2-metric-toggle .seg-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#n2-metric-toggle .seg-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      n2Metric = btn.dataset.metric;
+      renderYearlyTrend();
+    });
+  });
+
+  // ---- Continuous monthly severity timeline, Vietnam-style — continuous range from global filter ----
+  const sevNational = BUNDLE.monthly_severity;
+  const sevByProvince = BUNDLE.province_monthly_severity;
+  let severityChart = null;
+  function renderSeverityTimeline(){
+    const sharedRange = getGlobalRange();
+    // Independent default: before the shared filter is touched, this chart shows 2024-2026 YTD
+    // rather than whatever the KPI-driven filter defaults to — once touched, it follows the
+    // shared filter like everything else.
+    const range = globalFilterTouched ? sharedRange : { ...sharedRange, fromIdx: monthIndex(2024,1) };
+    const prov = range.province;
+    const sev = prov==='__ALL__' ? sevNational : (sevByProvince[prov] || {});
+    const months = monthsInRange(range.fromIdx, range.toIdx);
+    const sevLabels = [], dfArr=[], dhfArr=[], dssArr=[], dhfdArr=[], total2026Arr=[], dssPctArr=[];
+    let has2026 = false;
+    let totDF=0, totDHF=0, totDSS=0, totDHFD=0;
+    const yearAtIndex = [];
+    months.forEach(m=>{
+      const y = m.year, mi = m.month;
+      // Plain month-letter tick for every month — the year is now shown separately (divider +
+      // label plugin below) rather than merged into the tick text.
+      sevLabels.push(MONTH_LABELS[mi-1][0]);
+      yearAtIndex.push(y);
+      if(y === 2026){
+        has2026 = true;
+        const {cases, deaths} = getCasesDeaths(prov, y, mi);
+        dfArr.push(0); dhfArr.push(0); dssArr.push(0); dhfdArr.push(0);
+        total2026Arr.push(cases); dssPctArr.push(null);
+      } else {
+        const cats = (sev[String(y)]||{})[String(mi)] || {};
+        const df=cats.DF||0, dhf=cats.DHF||0, dss=cats.DSS||0, dhfd=cats.DHFD||0;
+        dfArr.push(df); dhfArr.push(dhf); dssArr.push(dss); dhfdArr.push(dhfd);
+        total2026Arr.push(null);
+        const tot = df+dhf+dss+dhfd;
+        dssPctArr.push(tot>0 ? +(dss/tot*100).toFixed(2) : null);
+        totDF+=df; totDHF+=dhf; totDSS+=dss; totDHFD+=dhfd;
+      }
+    });
+    const sevCanvas = document.getElementById('chart-severity-timeline');
+    sevCanvas.parentElement.style.position = 'relative';
+    sevCanvas.parentElement.style.width = '100%';
+    sevCanvas.parentElement.style.height = '360px';
+    if(severityChart) severityChart.destroy();
+    if(months.length === 0){ return; }
+    const datasets = [
+      {type:'bar', label:'DF', data: dfArr, backgroundColor:PALETTE.cat[0], stack:'s', yAxisID:'y', order:2, pointStyle:'rect'},
+      {type:'bar', label:'DHF', data: dhfArr, backgroundColor:PALETTE.gold, stack:'s', yAxisID:'y', order:2, pointStyle:'rect'},
+      {type:'bar', label:'DSS', data: dssArr, backgroundColor:PALETTE.darkRed, stack:'s', yAxisID:'y', order:2, pointStyle:'rect'},
+      {type:'bar', label:'Deaths (DHFD)', data: dhfdArr, backgroundColor:PALETTE.textBody, stack:'s', yAxisID:'y', order:2, pointStyle:'rect'}
+    ];
+    if(has2026){
+      datasets.push({type:'bar', label:'Total cases (2026 — severity mix unavailable)', data: total2026Arr, backgroundColor:hatchPattern(PALETTE.textMuted), stack:'s', yAxisID:'y', order:2, pointStyle:'rect'});
+    }
+    datasets.push({type:'line', label:'DSS share (right axis)', data: dssPctArr, borderColor:PALETTE.darkRed, backgroundColor:PALETTE.darkRed, yAxisID:'y1', tension:.25, pointRadius:0, borderWidth:1.75, borderDash:[6,4], order:1, pointStyle:'line', spanGaps:false});
+    // Draws a subtle vertical divider at each year boundary and the year number centred under
+    // that year's group of month bars — keeps the year visually separate from the month letters
+    // rather than merging them into one tick label.
+    const yearRanges = [];
+    yearAtIndex.forEach((y,i)=>{
+      const last = yearRanges[yearRanges.length-1];
+      if(last && last.year===y) last.end = i;
+      else yearRanges.push({year:y, start:i, end:i});
+    });
+    const yearDividerPlugin = {
+      id: 'yearDivider',
+      afterDraw(chart){
+        const xScale = chart.scales.x, yScale = chart.scales.y, ctx = chart.ctx;
+        ctx.save();
+        yearRanges.forEach((yr,ri)=>{
+          if(ri>0){
+            const xPix = (xScale.getPixelForValue(yr.start-1) + xScale.getPixelForValue(yr.start)) / 2;
+            ctx.strokeStyle = PALETTE.grid; ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+            ctx.beginPath(); ctx.moveTo(xPix, yScale.top); ctx.lineTo(xPix, yScale.bottom); ctx.stroke();
+            ctx.setLineDash([]);
+          }
+          const midPix = (xScale.getPixelForValue(yr.start) + xScale.getPixelForValue(yr.end)) / 2;
+          ctx.fillStyle = PALETTE.textMuted; ctx.font = '600 10px Arial'; ctx.textAlign = 'center';
+          ctx.fillText(String(yr.year), midPix, yScale.bottom + 32);
+        });
+        ctx.restore();
+      }
+    };
+    // Total-value label above each stacked bar (sum of every segment for that month), light-weight
+    // grey font — same treatment as the value labels on N2/N5/N6, so a total is always readable
+    // without needing to add up the stack by eye.
+    const stackTotals = sevLabels.map((_,i)=> dfArr[i]+dhfArr[i]+dssArr[i]+dhfdArr[i]+(total2026Arr[i]||0));
+    const stackTotalLabelPlugin = {
+      id: 'stackTotalLabel',
+      afterDatasetsDraw(chart){
+        const yScale = chart.scales.y, xScale = chart.scales.x, ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '400 9px Arial'; ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.textMuted;
+        stackTotals.forEach((total,i)=>{
+          if(!total) return;
+          const x = xScale.getPixelForValue(i);
+          const y = yScale.getPixelForValue(total);
+          ctx.fillText(fmt(total), x, y - 6);
+        });
+        ctx.restore();
+      }
+    };
+    severityChart = new Chart(sevCanvas, {
+      data:{ labels: sevLabels, datasets },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        layout:{ padding:{bottom:14} },
+        plugins:{ legend:{position:'bottom', labels:{usePointStyle:true}} },
+        scales:{
+          x:{ stacked:true, ticks:{autoSkip:false, maxRotation:0, minRotation:0, font:{size:10.5, weight:'400'}, color:PALETTE.textMuted} },
+          y:{ stacked:true, beginAtZero:true, position:'left', title:{display:true, text:'Cases'} },
+          y1:{ beginAtZero:true, position:'right', title:{display:true, text:'DSS %'}, grid:{drawOnChartArea:false}, ticks:{callback:v=>v+'%'} }
+        }
+      },
+      plugins: [yearDividerPlugin, stackTotalLabelPlugin]
+    });
+    requestAnimationFrame(()=> severityChart.resize());
+
+    const scopeLabel = prov==='__ALL__' ? 'Cambodia' : prov;
+    const grandTotal = totDF+totDHF+totDSS+totDHFD;
+    const pct = n => grandTotal ? (n/grandTotal*100).toFixed(1) : '0.0';
+    const yearsShown = [...new Set(months.filter(m=>m.year<2026).map(m=>m.year))];
+    const noteParts = [];
+    noteParts.push(`${scopeLabel}, ${rangeLabel(range)}: DF — ${fmt(totDF)} (${pct(totDF)}%) · DHF — ${fmt(totDHF)} (${pct(totDHF)}%) · DSS — ${fmt(totDSS)} (${pct(totDSS)}%) · Deaths (DHFD) — ${fmt(totDHFD)} (${pct(totDHFD)}%). DSS share on the right axis (dashed).`);
+    if(has2026) noteParts.push(`Severity is reported for ${yearsShown.length ? yearsShown[0]+'-'+yearsShown[yearsShown.length-1] : 'the historical years'} only — the source carries no severity split for 2026 YTD (shown in gray).`);
+    document.getElementById('severity-2026-note').textContent = noteParts.join(' ');
+  }
+
+  // ---- Top KPI row (Cases / Deaths / CFR / IR / Provinces Above Rate / YoY Change) ----
+  // Always national — this summary row doesn't follow the province filter, since "provinces
+  // above the national rate" only makes sense against a real national baseline. The charts below
+  // (Severity, Yearly Trend) still respect the province filter as before.
+  function renderTopKpiRow(){
+    const range = getGlobalRange();
+    const scopeFull = range.province === '__ALL__' ? null : range.province; // null = national
+    const scopeLabel = scopeFull || 'National';
+
+    // fromIdx/toIdx already encode year+month together, so this correctly catches a backwards
+    // range like "From: 2023-Apr, To: 2022-Jul" — comparing raw month numbers (4 vs 7) alone
+    // would miss that 2023 is after 2022 and silently compute a fake "Apr-Jul" window instead.
+    if(range.fromIdx > range.toIdx){
+      const msg = 'Invalid range — "From" is after "To". Pick a From date that comes before the To date.';
+      ['kpi-cases','kpi-deaths','kpi-cfr','kpi-ir','kpi-above','kpi-yoy'].forEach(id=>{
+        document.getElementById(id+'-value').textContent = '—';
+        const subEl = document.getElementById(id+'-sub'); if(subEl) subEl.textContent = '';
+        document.getElementById(id+'-change').innerHTML = `<span style="color:var(--danger);">${msg}</span>`;
+        const canvas = document.getElementById('spark-'+id.replace('kpi-',''));
+        const existing = canvas && Chart.getChart(canvas);
+        if(existing) existing.destroy();
+      });
+      return;
+    }
+
+    // Lump-sum across the ENTIRE selected range (every month from fromIdx to toIdx, however many
+    // years that spans) — not just the "To" year. "Prior" is the same span shifted back exactly
+    // one year, matching the "like-for-like" framing used everywhere else on this bar.
+    const monthsCur = monthsInRange(range.fromIdx, range.toIdx);
+    const monthsPrior = monthsInRange(range.fromIdx-12, range.toIdx-12);
+    const fromYear = Math.floor(range.fromIdx/12), toYear = Math.floor(range.toIdx/12);
+    const fromMonthNum = (range.fromIdx%12)+1, toMonthNumRaw = (range.toIdx%12)+1;
+    const toMonthCapped = toYear>=2026 ? Math.min(toMonthNumRaw, lastReported2026) : toMonthNumRaw;
+    const isYTD = toYear===2026; // only the current year is ever a partial/YTD window in this data
+    const winLabel = fromYear===toYear
+      ? (fromMonthNum===toMonthCapped ? MONTH_LABELS[fromMonthNum-1] : `${MONTH_LABELS[fromMonthNum-1]}-${MONTH_LABELS[toMonthCapped-1]}`)
+      : `${MONTH_LABELS[fromMonthNum-1]} ${fromYear} - ${MONTH_LABELS[toMonthCapped-1]} ${toYear}`;
+    const curYear = toYear; // used for the "vs same window <year-1>" label text only
+
+    document.getElementById('kpi-cases-label').innerHTML = `Cases — ${scopeLabel}${isYTD?' <span style="color:var(--danger);font-weight:800;">YTD</span>':''}`;
+    document.getElementById('kpi-deaths-label').innerHTML = `Deaths${isYTD?' <span style="color:var(--danger);font-weight:800;">YTD</span>':''}`;
+    document.getElementById('kpi-yoy-label').textContent = `like-for-like ${winLabel}`;
+
+    function popScopedForYear(y){
+      if(scopeFull) return (BUNDLE.full_population_2018_2026[scopeFull]||{})[String(y)] || 0;
+      return Object.values(BUNDLE.full_population_2018_2026).reduce((s,pByY)=>s+(pByY[String(y)]||0),0);
+    }
+    function sumScoped(monthList){
+      let cases=0, deaths=0; const yearsTouched = new Set();
+      monthList.forEach(m=>{
+        const {cases:c, deaths:d} = getCasesDeaths(scopeFull || '__ALL__', m.year, m.month);
+        if(c!=null){ cases+=c; deaths+=d; }
+        yearsTouched.add(m.year);
+      });
+      let pop = 0; yearsTouched.forEach(y=>{ pop += popScopedForYear(y); }); // person-years, one full year's population per year touched
+      return { cases, deaths, pop };
+    }
+    function withRates(agg){ return {...agg, ir: agg.pop?agg.cases/agg.pop*100000:0, cfr: agg.cases?agg.deaths/agg.cases*100:0}; }
+    const cur = withRates(sumScoped(monthsCur));
+    const prior = withRates(sumScoped(monthsPrior));
+
+    // True national lump-sum — always national regardless of the province filter, since
+    // "provinces above the national rate" is only meaningful against the real national baseline.
+    function sumNational(monthList){
+      let cases=0, deaths=0; const yearsTouched = new Set();
+      monthList.forEach(m=>{
+        const {cases:c, deaths:d} = getCasesDeaths('__ALL__', m.year, m.month);
+        if(c!=null){ cases+=c; deaths+=d; }
+        yearsTouched.add(m.year);
+      });
+      let pop = 0; yearsTouched.forEach(y=>{ pop += Object.values(BUNDLE.full_population_2018_2026).reduce((s,pByY)=>s+(pByY[String(y)]||0),0); });
+      return { cases, deaths, pop };
+    }
+    const curNationalAgg = sumNational(monthsCur);
+    const curNationalIR = curNationalAgg.pop ? curNationalAgg.cases/curNationalAgg.pop*100000 : 0;
+
+    function pctChange(a,b){ return b ? ((a-b)/b*100) : null; }
+    function setChangeEl(id, changePct, opts={}){
+      const el = document.getElementById(id);
+      if(changePct==null){ el.textContent = 'no prior-year data to compare'; el.className='kpi-sub'; return; }
+      const bad = opts.higherIsBad !== false ? changePct>=0 : changePct<0;
+      const arrow = changePct>=0 ? '▲' : '▼';
+      // Red is reserved for an actual epidemic-threshold breach (see N1) — a generic KPI
+      // increase is a neutral fact, not an epidemic declaration, so it stays text-body, not red.
+      el.innerHTML = `<span style="color:${bad?'var(--text-body)':'var(--positive)'};font-weight:700;">${arrow} ${Math.abs(changePct).toFixed(1)}% vs same window ${curYear-1}</span>`;
+    }
+
+    // ---- Custom dark tooltip (real popup, not the browser-native title attribute) ----
+    let tipEl = document.getElementById('kpi-tooltip');
+    if(!tipEl){
+      tipEl = document.createElement('div');
+      tipEl.id = 'kpi-tooltip';
+      tipEl.className = 'kpi-tooltip';
+      document.body.appendChild(tipEl);
+    }
+    function setTip(cardId, html){
+      const card = document.getElementById(cardId);
+      card.onmouseenter = (e)=>{
+        tipEl.innerHTML = html;
+        tipEl.style.display = 'block';
+        const r = card.getBoundingClientRect();
+        tipEl.style.left = Math.max(8, r.left) + 'px';
+        tipEl.style.top = (r.bottom + window.scrollY + 6) + 'px';
+      };
+      card.onmouseleave = ()=>{ tipEl.style.display = 'none'; };
+    }
+
+    document.getElementById('kpi-cases-value').textContent = fmt(cur.cases);
+    document.getElementById('kpi-cases-sub').textContent = winLabel;
+    setChangeEl('kpi-cases-change', pctChange(cur.cases, prior.cases));
+    setTip('kpi-cases', `<b>${fmt(cur.cases)} cases</b><hr>${scopeLabel}, ${winLabel}${isYTD?' — year-to-date, not a full period':''}<br><span class="d">Prior comparable window: ${fmt(prior.cases)}</span>`);
+
+    document.getElementById('kpi-deaths-value').textContent = fmt(cur.deaths);
+    setChangeEl('kpi-deaths-change', pctChange(cur.deaths, prior.deaths));
+    setTip('kpi-deaths', `<b>${fmt(cur.deaths)} deaths</b><hr>Numerator ${fmt(cur.deaths)} deaths / denominator ${fmt(cur.cases)} cases<br><span class="d">Prior comparable window: ${fmt(prior.deaths)}</span>`);
+
+    const cfrSuppressed = cur.cases < 20;
+    document.getElementById('kpi-cfr-value').textContent = cfrSuppressed ? 'n too small' : cur.cfr.toFixed(2)+'%';
+    document.getElementById('kpi-cfr-sub').textContent = cfrSuppressed ? 'fewer than 20 cases in scope' : 'deaths per 100 cases';
+    if(cfrSuppressed){ document.getElementById('kpi-cfr-change').innerHTML = '<span style="color:var(--text-secondary);">— suppressed</span>'; }
+    else { setChangeEl('kpi-cfr-change', pctChange(cur.cfr, prior.cfr)); }
+    setTip('kpi-cfr', `<b>${cfrSuppressed?'Suppressed':cur.cfr.toFixed(2)+'%'}</b><hr>${fmt(cur.deaths)} deaths ÷ ${fmt(cur.cases)} cases × 100<br><span class="d">Suppressed when the scope holds fewer than 20 cases</span>`);
+
+    document.getElementById('kpi-ir-value').textContent = fmt(Math.round(cur.ir*10)/10);
+    setChangeEl('kpi-ir-change', pctChange(cur.ir, prior.ir));
+    setTip('kpi-ir', `<b>${fmt(Math.round(cur.ir*10)/10)} per 100,000</b><hr>${fmt(cur.cases)} cases ÷ ${fmt(cur.pop)} population × 100,000<br><span class="d">Population summed over each year touched by the range (person-years)</span>`);
+
+    // Provinces above the TRUE national IR for this same lump-sum window — unaffected by the
+    // province filter, since this is inherently a nationwide comparison.
+    function provincesAboveForRange(monthList, nationalIRForRange){
+      let count = 0; const names = [];
+      nat.provinces.forEach(p=>{
+        const full = myr.name_map[p.province];
+        let cases=0; const yearsTouched = new Set();
+        monthList.forEach(m=>{ const {cases:c}=getCasesDeaths(full,m.year,m.month); if(c!=null) cases+=c; yearsTouched.add(m.year); });
+        let pop=0; yearsTouched.forEach(y=>{ pop += (BUNDLE.full_population_2018_2026[full]||{})[String(y)] || 0; });
+        const ir = pop ? cases/pop*100000 : 0;
+        if(ir > nationalIRForRange){ count++; names.push({province: full, ir}); }
+      });
+      return { count, names: names.sort((a,b)=>b.ir-a.ir) };
+    }
+    const aboveNow = provincesAboveForRange(monthsCur, curNationalIR);
+    document.getElementById('kpi-above-value').innerHTML = `${aboveNow.count} <span style="font-size:15px;color:var(--text-secondary);">of 25</span>`;
+    document.getElementById('kpi-above-sub').textContent = `national rate = ${fmt(Math.round(curNationalIR*10)/10)} per 100,000`;
+    const namesList = aboveNow.names.slice(0,3).map(p=>p.province).join(', ') + (aboveNow.names.length>3 ? ` +${aboveNow.names.length-3} more` : '');
+    document.getElementById('kpi-above-change').textContent = namesList || 'none this window';
+    setTip('kpi-above', `<b>${aboveNow.count} of 25 provinces</b> exceed the national rate of ${fmt(Math.round(curNationalIR*10)/10)} per 100,000<hr>${aboveNow.names.map(p=>p.province).join(', ')||'none'}<br><span class="d">${winLabel} window</span>`);
+
+    const yoyPct = pctChange(cur.cases, prior.cases);
+    document.getElementById('kpi-yoy-value').textContent = yoyPct!=null ? (yoyPct>=0?'+':'')+yoyPct.toFixed(1)+'%' : '—';
+    document.getElementById('kpi-yoy-change').innerHTML = `${fmt(cur.cases)} now vs ${fmt(prior.cases)} then`;
+    setTip('kpi-yoy', `<b>${yoyPct==null?'—':(yoyPct>=0?'+':'')+yoyPct.toFixed(1)+'%'}</b><hr>${fmt(cur.cases)} cases this window vs ${fmt(prior.cases)} in the same window a year earlier<br><span class="d">Like-for-like: both windows use the same months (${winLabel}), so a partial year is never compared against a full one.</span>`);
+
+    // ---- Sparklines: per-year trend for historical context (2020-2026), independent of exactly
+    // how many years the current lump-sum selection spans — these show the shape of the trend,
+    // not the selected total itself. ----
+    const seriesYears = [2020,2021,2022,2023,2024,2025,2026];
+    function windowMonthsForYear(y){
+      const cap = y>=2026 ? Math.min(toMonthCapped, lastReported2026) : toMonthCapped;
+      const out = []; for(let m=fromYear===toYear?fromMonthNum:1; m<=cap; m++) out.push(m);
+      return out;
+    }
+    const yearlyTrend = seriesYears.map(y=>{
+      let cases=0, deaths=0;
+      windowMonthsForYear(y).forEach(m=>{ const {cases:c,deaths:d}=getCasesDeaths(scopeFull||'__ALL__',y,m); if(c!=null){cases+=c;deaths+=d;} });
+      const pop = popScopedForYear(y);
+      return { year:y, cases, deaths, pop, ir: pop?cases/pop*100000:0, cfr: cases?deaths/cases*100:0 };
+    });
+    const nationalYearlyTrend = seriesYears.map(y=>{
+      let cases=0; windowMonthsForYear(y).forEach(m=>{ const {cases:c}=getCasesDeaths('__ALL__',y,m); if(c!=null) cases+=c; });
+      const pop = Object.values(BUNDLE.full_population_2018_2026).reduce((s,pByY)=>s+(pByY[String(y)]||0),0);
+      return { year:y, ir: pop?cases/pop*100000:0 };
+    });
+    function drawSparkline(canvasId, data, color){
+      const canvas = document.getElementById(canvasId);
+      const existing = Chart.getChart(canvas);
+      if(existing) existing.destroy();
+      // Point radius 0 everywhere except the last (most recent) value, which gets a small filled
+      // dot — matches the "line ending in a dot" sparkline style used on the KPI cards.
+      const pointRadii = data.map((_,i)=> i===data.length-1 ? 3 : 0);
+      new Chart(canvas, {
+        type:'line',
+        data:{ labels: data.map((_,i)=>i), datasets:[{data, borderColor:color, backgroundColor:color, borderWidth:1.75, pointRadius:pointRadii, pointBackgroundColor:color, pointBorderColor:color, tension:.3}] },
+        options:{ responsive:true, maintainAspectRatio:false, animation:false,
+          plugins:{legend:{display:false}, tooltip:{enabled:false}},
+          scales:{ x:{display:false}, y:{display:false} }
+        }
+      });
+    }
+    drawSparkline('spark-cases', yearlyTrend.map(y=>y.cases), PALETTE.turquoise);
+    drawSparkline('spark-deaths', yearlyTrend.map(y=>y.deaths), PALETTE.textBody);
+    drawSparkline('spark-cfr', yearlyTrend.map(y=>y.cfr), PALETTE.turquoise);
+    drawSparkline('spark-ir', yearlyTrend.map(y=>y.ir), PALETTE.gold);
+    const aboveTrend = nationalYearlyTrend.map(row=>provincesAboveForRange(windowMonthsForYear(row.year).map(m=>({year:row.year,month:m})), row.ir).count);
+    drawSparkline('spark-above', aboveTrend, PALETTE.green);
+    drawSparkline('spark-yoy', yearlyTrend.map(y=>y.cases), PALETTE.darkBlue);
+  }
+
+
+  function renderAllFilteredCharts(){
+    renderYearlyTrend();
+    renderSeverityTimeline();
+    renderTopKpiRow();
+    renderInsightPanel();
+  }
+  // ---- Insight Engine: 4-6 computed bullets, not hard-coded, recomputed on every filter change ----
+  function renderInsightPanel(){
+    const range = getGlobalRange();
+    const scopeFull = range.province === '__ALL__' ? null : range.province;
+    const bullets = [];
+
+    // 1. Highest-IR province this period, and its multiple of the national average.
+    const curYear2 = Math.floor(range.toIdx/12);
+    const provIRs = nat.provinces.map(p=>{
+      const full = myr.name_map[p.province];
+      const cases = (myr.province_series[full]?.cases[String(curYear2)]) || 0;
+      const pop = (BUNDLE.full_population_2018_2026[full]||{})[String(curYear2)] || 0;
+      return { province: full, ir: pop ? cases/pop*100000 : 0 };
+    });
+    const topIR = [...provIRs].sort((a,b)=>b.ir-a.ir)[0];
+    const natCases = myr.national_yearly.find(y=>y.year===curYear2)?.cases || 0;
+    const natPop = Object.values(BUNDLE.full_population_2018_2026).reduce((s,p)=>s+(p[String(curYear2)]||0),0);
+    const natIR2 = natPop ? natCases/natPop*100000 : 0;
+    if(topIR && natIR2){
+      bullets.push(`<b>${topIR.province}</b> has the highest incidence rate in ${curYear2} at <b>${fmt(Math.round(topIR.ir*10)/10)} per 100,000</b> — <b>${(topIR.ir/natIR2).toFixed(1)}×</b> the national average of ${fmt(Math.round(natIR2*10)/10)}.`);
+    }
+
+    // 2. Fastest-rising province: largest % increase, most recent 2 reported months vs prior 2.
+    const lm2 = lastReported2026;
+    if(lm2 >= 2){
+      const risers = nat.provinces.map(p=>{
+        const full = myr.name_map[p.province];
+        const recent = getCasesDeaths(full, 2026, lm2).cases + getCasesDeaths(full, 2026, lm2-1).cases;
+        const prior = getCasesDeaths(full, 2026, lm2-2).cases + (lm2>=4 ? getCasesDeaths(full, 2026, lm2-3).cases : 0);
+        const pct = prior>0 ? (recent-prior)/prior*100 : null;
+        return { province: full, recent, prior, pct };
+      }).filter(r=>r.pct!=null && r.prior>=20);
+      const fastest = risers.sort((a,b)=>b.pct-a.pct)[0];
+      if(fastest && fastest.pct>0){
+        bullets.push(`<b>${fastest.province}</b> is rising fastest: <b>+${fastest.pct.toFixed(0)}%</b> in the last two reported months (${fmt(fastest.recent)} cases) versus the two before that (${fmt(fastest.prior)}).`);
+      }
+    }
+
+    // 3. Outbreak signal: is the latest reported month above the mean + 2SD threshold?
+    if(typeof epiChannelMeanSD !== 'undefined' && lm2>=1){
+      const latestChannel = epiChannelMeanSD[lm2-1];
+      const latestActual = epi2026Actual[lm2-1];
+      if(latestChannel && latestActual!=null){
+        const above = latestActual > latestChannel.threshold;
+        bullets.push(above
+          ? `<b>Outbreak signal: yes.</b> ${MONTH_LABELS[lm2-1]} 2026 (${fmt(latestActual)} cases) is above the mean + 2SD threshold for that month (${fmt(Math.round(latestChannel.threshold))}).`
+          : `<b>Outbreak signal: no.</b> ${MONTH_LABELS[lm2-1]} 2026 (${fmt(latestActual)} cases) is below the mean + 2SD threshold for that month (${fmt(Math.round(latestChannel.threshold))}).`);
+      }
+    }
+
+    // 4. Age band with highest case load vs highest CFR — flag when they differ.
+    if(nat.age_cases && nat.age_cases.length){
+      const byLoad = [...nat.age_cases].sort((a,b)=>b.cases2026-a.cases2026)[0];
+      const byCFR = [...nat.age_cases].filter(a=>a.cases2026>=20).sort((a,b)=>b.cfr2026-a.cfr2026)[0];
+      if(byLoad && byCFR){
+        if(byLoad.age_group === byCFR.age_group){
+          bullets.push(`The <b>${byLoad.age_group}</b> band carries both the highest case load (${fmt(byLoad.cases2026)} cases) and the highest case fatality rate (${byCFR.cfr2026}%) — the same group to target on both fronts.`);
+        } else {
+          bullets.push(`The <b>${byLoad.age_group}</b> band carries the highest case load (${fmt(byLoad.cases2026)} cases), but <b>${byCFR.age_group}</b> has the highest case fatality rate (${byCFR.cfr2026}%) — two different groups, so targeting one doesn't cover the other.`);
+        }
+      }
+    }
+
+    document.getElementById('insight-list').innerHTML = bullets.length
+      ? bullets.map(b=>`<li>${b}</li>`).join('')
+      : '<li>No cases match this selection.</li>';
+  }
+  [gProvSelect, gFromYear, gFromMonth, gToYear, gToMonth].forEach(el=>el.addEventListener('change', ()=>{ globalFilterTouched = true; renderAllFilteredCharts(); }));
+  renderAllFilteredCharts();
+
+
+  // ---- Live Data Quality & Reconciliation panel ----
+  // ---- Province x Month Heatmap: incidence rate per 100,000 population ----
+  const v6YearSelect = document.getElementById('v6-year-select');
+  const v6AvailableYears = myr.national_yearly.map(y=>y.year).sort((a,b)=>b-a);
+  v6YearSelect.innerHTML = v6AvailableYears.map(y=>`<option value="${y}" ${y===2026?'selected':''}>${y}</option>`).join('');
+  function renderProvinceMonthHeatmap(){
+    const selYear = parseInt(v6YearSelect.value, 10);
+    const provNamesSorted = [...nat.provinces].map(p=>myr.name_map[p.province]).sort((a,b)=>a.localeCompare(b));
+    const lastMonthForYear = selYear === 2026 ? lastReported2026 : 12;
+    const rows = provNamesSorted.map(full=>{
+      const abbrev = abbrevFor(full);
+      const cells = MONTH_LABELS.map((m,i)=>{
+        const month = i+1;
+        if(month > lastMonthForYear) return { cases:null };
+        if(selYear === 2024 && month === 12) return { cases:null }; // Dec 2024 genuinely never reported
+        const {cases} = getCasesDeaths(full, selYear, month);
+        return { cases };
+      });
+      const yearTotal = myr.province_series[full]?.cases[String(selYear)] || 0;
+      const pop = (BUNDLE.full_population_2018_2026[full]||{})[String(selYear)] || 0;
+      const yearIR = pop ? yearTotal/pop*100000 : 0;
+      return { full, abbrev, cells, yearTotal, yearIR };
+    });
+    const valueOf = c => c.cases;
+    // Bins computed from this data's own distribution (not hard-coded), same 5-bin CHAI
+    // choropleth ramp used elsewhere on the dashboard for incidence-rate colouring.
+    const allVals = rows.flatMap(r=>r.cells.map(valueOf)).filter(v=>v!=null).sort((a,b)=>a-b);
+    function q(p){ if(allVals.length===0) return 0; const idx=(allVals.length-1)*p; const lo=Math.floor(idx),hi=Math.ceil(idx); return lo===hi?allVals[lo]:allVals[lo]+(allVals[hi]-allVals[lo])*(idx-lo); }
+    const bins = [
+      {max: q(0.35), color:PALETTE.ramp[0]},
+      {max: q(0.6), color:PALETTE.ramp[1]},
+      {max: q(0.78), color:PALETTE.ramp[2]},
+      {max: q(0.92), color:PALETTE.ramp[3]},
+      {max: Infinity, color:PALETTE.ramp[4]}
+    ];
+    function colorFor(v){ if(v==null) return PALETTE.grid; for(const b of bins){ if(v<=b.max) return b.color; } return bins[bins.length-1].color; }
+
+    const cellW = 42.5, cellH = 15.5, rowGap = 1.5, leftPad = 130, topPad = 24, casesColW = 60, irColW = 55;
+    const svgW = leftPad + 12*(cellW+1.5) + casesColW + irColW + 20;
+    const svgH = topPad + rows.length*(cellH+rowGap) + 10;
+    const svg = document.getElementById('v6-heatmap');
+    svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
+    svg.setAttribute('width', svgW);
+    svg.setAttribute('height', svgH);
+    svg.style.minWidth = svgW+'px';
+    const NS = 'http://www.w3.org/2000/svg';
+    function el(tag, attrs){ const e=document.createElementNS(NS,tag); Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v)); return e; }
+    svg.innerHTML = '';
+    MONTH_LABELS.forEach((m,i)=>{
+      const x = leftPad + i*(cellW+1.5) + cellW/2;
+      const t = el('text', {x, y:16, 'text-anchor':'middle', 'font-size':'11', fill:PALETTE.textMuted});
+      t.textContent = m; svg.appendChild(t);
+    });
+    const casesHeaderX = leftPad + 12*(cellW+1.5) + 30;
+    const irHeaderX = casesHeaderX + casesColW/2 + irColW/2 + 4;
+    const casesHeader = el('text', {x: casesHeaderX, y:16, 'text-anchor':'middle', 'font-size':'10.5', 'font-weight':'700', fill:PALETTE.textMuted});
+    casesHeader.textContent = `${selYear} cases`; svg.appendChild(casesHeader);
+    const irHeader = el('text', {x: irHeaderX, y:16, 'text-anchor':'middle', 'font-size':'10.5', 'font-weight':'700', fill:PALETTE.textMuted});
+    irHeader.textContent = `${selYear} IR`; svg.appendChild(irHeader);
+    // Thin divider between the daily heatmap grid and the two year-total summary columns.
+    const dividerX = leftPad + 12*(cellW+1.5) + 8;
+    svg.appendChild(el('line', {x1:dividerX, y1:topPad-6, x2:dividerX, y2:svgH-8, stroke:PALETTE.grid, 'stroke-width':'1'}));
+
+    rows.forEach((r,ri)=>{
+      const y = topPad + ri*(cellH+rowGap);
+      const nameEl = el('text', {x: leftPad-6, y: y+cellH-4, 'text-anchor':'end', 'font-size':'11.5', fill:PALETTE.textMuted, style:'cursor:pointer;'});
+      nameEl.textContent = r.full;
+      nameEl.addEventListener('click', ()=>{
+        gProvSelect.value = (gProvSelect.value === r.full) ? '__ALL__' : r.full;
+        gProvSelect.dispatchEvent(new Event('change'));
+      });
+      svg.appendChild(nameEl);
+      r.cells.forEach((c,ci)=>{
+        const v = valueOf(c);
+        const x = leftPad + ci*(cellW+1.5);
+        const fill = colorFor(v);
+        const rect = el('rect', {x, y, width:cellW, height:cellH, fill, stroke:PALETTE.surface, 'stroke-width':'0.8', rx:'1.5'});
+        svg.appendChild(rect);
+        if(v!=null){
+          const lr = parseInt(fill.slice(1,3),16)/255, lg = parseInt(fill.slice(3,5),16)/255, lb = parseInt(fill.slice(5,7),16)/255;
+          const isDark = (0.2126*lr + 0.7152*lg + 0.0722*lb) < 0.5;
+          const txt = el('text', {x: x+cellW/2, y: y+cellH-4.4, 'text-anchor':'middle', 'font-size':'8.6', 'font-weight':'700', fill: isDark?PALETTE.surface:PALETTE.textBody});
+          txt.textContent = fmt(Math.round(v));
+          svg.appendChild(txt);
+        }
+      });
+      const casesTxt = el('text', {x: casesHeaderX, y: y+cellH-4, 'text-anchor':'middle', 'font-size':'11', fill:PALETTE.textMuted});
+      casesTxt.textContent = fmt(r.yearTotal);
+      svg.appendChild(casesTxt);
+      const irTxt = el('text', {x: irHeaderX, y: y+cellH-4, 'text-anchor':'middle', 'font-size':'11', 'font-weight':'600', fill:PALETTE.darkBlue});
+      irTxt.textContent = r.yearIR.toFixed(1);
+      svg.appendChild(irTxt);
+    });
+
+    const fmtBin = v => fmt(Math.round(v));
+    document.getElementById('v6-legend').innerHTML =
+      `<b style="margin-right:8px;">case count, ${selYear} (Jan-${MONTH_LABELS[lastMonthForYear-1]} only) — every cell shows its value</b>`+
+      bins.map((b,i)=>({ color:b.color, label: i===0 ? `0 – ${fmtBin(b.max)}` : (i===bins.length-1 ? `> ${fmtBin(bins[i-1].max)}` : `${fmtBin(bins[i-1].max)} – ${fmtBin(b.max)}`) }))
+      .map(b=>`<span><i style="background:${b.color};border:1px solid rgba(0,0,0,.06);"></i>${b.label}</span>`).join('')+
+      `<span><i style="background:${PALETTE.grid};border:1px solid rgba(0,0,0,.06);"></i>no data</span>`;
+    document.getElementById('v6-caveat').textContent = selYear === 2026
+      ? `${MONTH_LABELS[lastMonthForYear]||'Later months'} to December 2026 are blank because they have not been reported yet — not because there were no cases.`
+      : (selYear === 2024 ? 'December 2024 is blank because it was never reported — not because there were no cases.' : '');
+  }
+  v6YearSelect.addEventListener('change', renderProvinceMonthHeatmap);
+  renderProvinceMonthHeatmap();
+
+  // The heatmap is drawn as SVG, not a Chart.js canvas, so it needs its own PNG export: serialize
+  // the SVG (now free of CSS variables, so it rasterizes correctly standalone), draw it onto a
+  // canvas at 2x for crispness on a white background, then download that canvas as a PNG.
+  document.getElementById('v6-download-btn').addEventListener('click', ()=>{
+    const svg = document.getElementById('v6-heatmap');
+    const vb = svg.viewBox.baseVal;
+    const w = vb && vb.width ? vb.width : svg.width.baseVal.value;
+    const h = vb && vb.height ? vb.height : svg.height.baseVal.value;
+    const clone = svg.cloneNode(true);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.setAttribute('width', w); clone.setAttribute('height', h);
+    const svgText = new XMLSerializer().serializeToString(clone);
+    const svgUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgText);
+    const img = new Image();
+    img.onload = () => {
+      const scale = 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = w*scale; canvas.height = h*scale;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = PALETTE.surface; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0, w, h);
+      const pngUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a'); a.href = pngUrl;
+      a.download = `province_month_heatmap_cases_${v6YearSelect.value}.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+    };
+    img.onerror = () => { alert('Could not render the heatmap to PNG. Try again, or right-click the chart and "Save image as" instead.'); };
+    img.src = svgUrl;
+  });
+
+
+  // ---- Dengue Risk Map by Province (real choropleth, Leaflet) ----
+  const irData = BUNDLE.ir_heatmap;
+  const geoData = BUNDLE.cambodia_geo;
+  const keyFacilities = BUNDLE.key_facilities;
+  const irMapYears = irData.years;
+  const irMapYearDD = buildYearDropdown('ir-map-year-dropdown', irMapYears, [2026], ()=>renderRiskMap());
+
+  // GeoJSON feature province name -> our canonical province name
+  const GEO_NAME_MAP = {
+    'Bantey Meanchey':'Banteay Meanchey','Battambang':'Battambang','Kampong Cham':'Kampong Cham',
+    'Kampong Chhnang':'Kampong Chhnang','Kampong Speu':'Kampong Speu','Kampong Thom':'Kampong Thom',
+    'Kampot':'Kampot','Kandal':'Kandal','Kep':'Kep','Koh Kong':'Koh Kong','Kratie':'Kratie',
+    'Mondulkiri':'Mondul Kiri','Oddar Meanchey':'Otdar Meanchey','Pailin':'Pailin','Phnom Penh':'Phnom Penh',
+    'Preah Sihanouk':'Preah Sihanouk','Preah Vihear':'Preah Vihear','Prey Veng':'Prey Veng','Pursat':'Pursat',
+    'Ratanakiri Province':'Ratanak Kiri','Siem Reap':'Siem Reap','Stung Treng':'Stung Treng',
+    'Svay Rieng':'Svay Rieng','Takeo':'Takeo','Tbong Khmum':'Tboung Khmum'
+  };
+
+  // Sequential 5-bin CHAI choropleth ramp (low to high), per design system.
+  const CHOROPLETH_RAMP = PALETTE.ramp;
+  const IR_BINS = [
+    {max:200, color:CHOROPLETH_RAMP[0], label:'0 - 200'},
+    {max:320, color:CHOROPLETH_RAMP[1], label:'200 - 320'},
+    {max:440, color:CHOROPLETH_RAMP[2], label:'320 - 440'},
+    {max:600, color:CHOROPLETH_RAMP[3], label:'440 - 600'},
+    {max:Infinity, color:CHOROPLETH_RAMP[4], label:'> 600'}
+  ];
+  const CASE_BIN_COLORS = CHOROPLETH_RAMP;
+  const NO_DATA_COLOR = PALETTE.grid;
+  let mapMetric = 'ir';
+  let CURRENT_BINS = IR_BINS;
+  function valueFor(province, year){
+    if(mapMetric === 'ir') return irData.ir_by_province_year[province] ? (irData.ir_by_province_year[province][year] ?? 0) : 0;
+    const series = myr.province_series[province];
+    return (series && series.cases[String(year)]) || 0;
+  }
+  // Cases has no fixed regional standard like IR does, so its bins are computed fresh from
+  // whichever years are currently selected — same 5-bin ramp, clean quantile-based steps.
+  function computeCaseBins(years){
+    const allVals = [];
+    Object.keys(irData.ir_by_province_year).forEach(p=>{
+      years.forEach(y=>allVals.push(valueFor(p, y)));
+    });
+    allVals.sort((a,b)=>a-b);
+    function q(p){ if(allVals.length===0) return 0; const idx=(allVals.length-1)*p; const lo=Math.floor(idx),hi=Math.ceil(idx); return lo===hi?allVals[lo]:allVals[lo]+(allVals[hi]-allVals[lo])*(idx-lo); }
+    const cuts = [q(0.3), q(0.55), q(0.75), q(0.9)];
+    return cuts.map((c,i)=>({ max: Math.round(c), color: CASE_BIN_COLORS[i], label: i===0 ? `0 - ${Math.round(c)}` : `${Math.round(cuts[i-1])} - ${Math.round(c)}` }))
+      .concat([{ max: Infinity, color: CASE_BIN_COLORS[4], label: `> ${Math.round(cuts[3])}` }]);
+  }
+  function irColor(v){
+    for(const b of CURRENT_BINS){ if(v <= b.max) return b.color; }
+    return CURRENT_BINS[CURRENT_BINS.length-1].color;
+  }
+  // Perceptual luminance of a hex color, used to pick readable label text/glow per province
+  // rather than one fixed dark color that goes illegible on the darkest bins.
+  function relativeLuminance(hex){
+    const r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+    return 0.2126*r + 0.7152*g + 0.0722*b;
+  }
+  function refreshMapLegend(){
+    const legendEl = document.getElementById('ir-map-legend');
+    const unitNote = mapMetric === 'ir' ? 'cases per 100,000 population' : 'case count (bins fit to the years currently shown)';
+    legendEl.innerHTML = `<div class="legend-item" style="width:100%;font-weight:700;color:var(--text-secondary);font-size:11px;">${unitNote}</div>`
+      + CURRENT_BINS.map(b=>`<div class="legend-item"><span class="dot" style="background:${b.color};border:1px solid ${PALETTE.grid};border-radius:3px;width:14px;height:14px;"></span> ${b.label}</div>`).join('')
+      + `<div class="legend-item"><span style="color:${PALETTE.green};font-size:16px;">▲</span> Provincial Referral Hospital</div>`
+      + `<div class="legend-item"><span style="color:${PALETTE.turquoise};font-size:16px;">★</span> National Hospital</div>`;
+  }
+  window._GEO_NAME_MAP = GEO_NAME_MAP;
+  window._irColorFn = irColor;
+  window._IR_BINS = CURRENT_BINS;
+  refreshMapLegend();
+
+  let activeMaps = []; // Leaflet instances currently on screen — destroyed and rebuilt on every render
+  // Provinces small/thin enough on the map that an in-place label would be unreadable — these
+  // get a numbered badge instead, with the actual values listed in a footnote below the map.
+  const SMALL_PROVINCES = ['Pailin', 'Kandal', 'Phnom Penh', 'Preah Sihanouk', 'Kep'];
+  function drawChoropleth(map, year, {labels, hospitals}){
+    const smallProvinceEntries = [];
+    const unit = mapMetric === 'ir' ? ' per 100,000' : ' cases';
+    const metricLabel = mapMetric === 'ir' ? 'IR' : 'Cases';
+    const geoLayer = L.geoJSON(geoData, {
+      style: feature => {
+        const provName = GEO_NAME_MAP[feature.properties.name];
+        const v = provName ? valueFor(provName, year) : 0;
+        return { fillColor: irColor(v), fillOpacity: 0.85, color: PALETTE.textBody, weight: labels?1.5:1 };
+      },
+      onEachFeature: (feature, layer) => {
+        const provName = GEO_NAME_MAP[feature.properties.name] || feature.properties.name;
+        const v = provName ? valueFor(provName, year) : null;
+        const vLabel = v!=null ? (mapMetric==='ir' ? v.toFixed(1) : fmt(v)) : 'n/a';
+        if(labels){
+          if(SMALL_PROVINCES.includes(provName)){
+            smallProvinceEntries.push({ province: provName, irLabel: vLabel, layer });
+          } else {
+            const fill = irColor(v);
+            const isDark = relativeLuminance(fill) < 0.5;
+            const cls = isDark ? 'prov-label prov-label-light' : 'prov-label prov-label-dark';
+            layer.bindTooltip(`<div class="${cls}"><b>${provName}</b><br>${metricLabel}: ${vLabel}</div>`, {
+              permanent:true, direction:'center', className:'prov-label-tooltip', interactive:false
+            });
+          }
+        } else {
+          layer.bindTooltip(`<b>${provName}</b>: ${vLabel}${mapMetric==='ir'?unit:''}`, {sticky:true});
+        }
+      }
+    }).addTo(map);
+    map.fitBounds(geoLayer.getBounds(), {padding: labels ? [60,60] : [6,6]});
+    if(labels){
+      // Numbered badge at each small province's centroid, with the real name/value in a footnote
+      // (built by the caller) rather than crammed illegibly into the polygon itself.
+      smallProvinceEntries.forEach((entry, i)=>{
+        const center = entry.layer.getBounds().getCenter();
+        const num = i+1;
+        L.marker(center, {
+          icon: L.divIcon({
+            html:`<div style="background:${PALETTE.darkBlue};color:${PALETTE.surface};border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid ${PALETTE.surface};box-shadow:0 1px 3px rgba(0,0,0,.4);">${num}</div>`,
+            className:'', iconSize:[20,20], iconAnchor:[10,10]
+          }),
+          interactive:false
+        }).addTo(map).bindTooltip(`<b>${entry.province}</b><br>IR: ${entry.irLabel}`, {direction:'top'});
+      });
+      map._smallProvinceFootnote = smallProvinceEntries.map((e,i)=>`${i+1}${e.province} ${e.irLabel}`).join(' · ');
+      // Neighboring country name labels for geographic orientation — no border polygons for these
+      // countries in our data, so these are placed at approximate real-world positions, not traced borders.
+      const NEIGHBORS = [
+        {name:'THAILAND', lat:13.6, lng:102.15},
+        {name:'LAO PDR', lat:15.0, lng:106.3},
+        {name:'VIETNAM', lat:10.7, lng:107.85}
+      ];
+      NEIGHBORS.forEach(n=>{
+        L.marker([n.lat, n.lng], {
+          icon: L.divIcon({ html:`<span style="color:${PALETTE.turquoise};font-weight:700;font-size:12px;letter-spacing:.5px;">${n.name}</span>`, className:'', iconSize:[100,16], iconAnchor:[50,8] }),
+          interactive:false
+        }).addTo(map);
+      });
+      // Scale bar (Leaflet's built-in control) and a simple north arrow overlay — standard map
+      // furniture that makes this read as a real geographic map rather than a coloured diagram.
+      L.control.scale({position:'bottomleft', imperial:false, maxWidth:120}).addTo(map);
+      const northArrow = L.control({position:'topright'});
+      northArrow.onAdd = () => {
+        const div = L.DomUtil.create('div');
+        div.style.cssText = 'background:rgba(255,255,255,.85);border-radius:6px;padding:4px 8px;text-align:center;font-weight:800;color:${PALETTE.textBody};font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.15);';
+        div.innerHTML = 'N<br><span style="font-size:15px;">↑</span>';
+        return div;
+      };
+      northArrow.addTo(map);
+    }
+    if(hospitals){
+      keyFacilities.forEach(f=>{
+        const isNH = f.type === 'NH';
+        const icon = L.divIcon({
+          html: isNH ? `<span style="color:${PALETTE.turquoise};font-size:20px;">★</span>` : `<span style="color:${PALETTE.green};font-size:18px;">▲</span>`,
+          className: '', iconSize: [20,20], iconAnchor: [10,10]
+        });
+        L.marker([f.lat, f.long], {icon}).addTo(map)
+          .bindPopup(`<b>${f.name}</b><br>${isNH ? 'National Hospital' : 'Provincial Referral Hospital'}<br>${f.province}`);
+      });
+    }
+    return geoLayer;
+  }
+
+  function renderRiskMap(){
+    const selectedYears = irMapYearDD.getSelected();
+    const frame = document.getElementById('ir-risk-map-frame');
+    activeMaps.forEach(m=>m.remove());
+    window._riskMapFootnote = '';
+    activeMaps = [];
+    frame.innerHTML = '';
+
+    // Bins depend on the metric and (for cases) the years currently in view, so recompute here
+    // before any province gets colored.
+    CURRENT_BINS = mapMetric === 'ir' ? IR_BINS : computeCaseBins(selectedYears.length ? selectedYears : [2026]);
+    window._IR_BINS = CURRENT_BINS;
+    refreshMapLegend();
+
+    if(selectedYears.length === 0){
+      frame.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-secondary);">Pick at least one year.</div>';
+      document.getElementById('ir-map-note').textContent = '';
+      return;
+    }
+
+    if(selectedYears.length === 1){
+      // Single year: full-size map with permanent labels + hospital markers, same as before
+      const div = document.createElement('div');
+      div.id = 'ir-risk-map-single';
+      div.style.cssText = 'width:100%;height:100%;';
+      frame.appendChild(div);
+      const map = L.map(div, {scrollWheelZoom:true, attributionControl:false, zoomControl:false, minZoom:5, maxZoom:16}).setView([12.6, 104.9], 7);
+      const layer = drawChoropleth(map, String(selectedYears[0]), {labels:true, hospitals:true});
+      activeMaps.push(map);
+      window._riskMapFootnote = map._smallProvinceFootnote || '';
+      requestAnimationFrame(()=>{ map.invalidateSize(); map.fitBounds(layer.getBounds(), {padding:[60,60]}); });
+    } else {
+      // Multiple years: small-multiples grid inside the same frame — more years = smaller maps
+      const n = selectedYears.length;
+      const cols = Math.ceil(Math.sqrt(n));
+      const rows = Math.ceil(n / cols);
+      const grid = document.createElement('div');
+      grid.style.cssText = `display:grid;grid-template-columns:repeat(${cols},1fr);grid-template-rows:repeat(${rows},1fr);gap:6px;width:100%;height:100%;padding:6px;box-sizing:border-box;`;
+      frame.appendChild(grid);
+      selectedYears.forEach(y=>{
+        const cell = document.createElement('div');
+        cell.style.cssText = 'position:relative;background:'+PALETTE.surface+';border-radius:6px;overflow:hidden;border:1px solid var(--border);';
+        const title = document.createElement('div');
+        title.textContent = y===2026 ? '2026 (YTD)' : String(y);
+        title.style.cssText = 'position:absolute;top:4px;left:6px;z-index:1000;font-size:11px;font-weight:700;color:${PALETTE.darkBlue};background:rgba(255,255,255,.85);padding:1px 6px;border-radius:4px;';
+        const mapDiv = document.createElement('div');
+        mapDiv.style.cssText = 'width:100%;height:100%;';
+        cell.appendChild(mapDiv); cell.appendChild(title);
+        grid.appendChild(cell);
+        const map = L.map(mapDiv, {scrollWheelZoom:true, attributionControl:false, zoomControl:false, minZoom:5, maxZoom:16}).setView([12.6, 104.9], 6);
+        const layer = drawChoropleth(map, String(y), {labels:false, hospitals:n<=2});
+        activeMaps.push(map);
+        requestAnimationFrame(()=>{ map.invalidateSize(); map.fitBounds(layer.getBounds(), {padding:[4,4]}); });
+      });
+    }
+
+    // Highest/lowest value caption across all selected years
+    const parts = selectedYears.map(y=>{
+      const entries = Object.keys(irData.ir_by_province_year)
+        .map(p=>({ province:p, v: valueFor(p, y) }))
+        .sort((a,b)=>b.v-a.v);
+      const top = entries[0];
+      const yearLabel = y===2026 ? '2026 (YTD)' : y;
+      const vLabel = mapMetric==='ir' ? top.v.toFixed(1) : fmt(top.v);
+      return top ? `${yearLabel}: highest ${top.province} (${vLabel})` : '';
+    }).filter(Boolean);
+    const footnote = window._riskMapFootnote ? ` Numbered on the map because too small to label in place: ${window._riskMapFootnote}.` : '';
+    const metricLabel = mapMetric === 'ir' ? 'Highest IR per 100,000' : 'Highest case count';
+    document.getElementById('ir-map-note').textContent = metricLabel + ' — ' + parts.join(' · ') + '.' + footnote;
+  }
+  document.querySelectorAll('#ir-map-metric-toggle .seg-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#ir-map-metric-toggle .seg-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      mapMetric = btn.dataset.metric;
+      renderRiskMap();
+    });
+  });
+  window._renderRiskMap = renderRiskMap;
+  document.getElementById('ir-map-download-btn').addEventListener('click', ()=>{
+    const selectedYears = irMapYearDD.getSelected();
+    const yearsLabel = selectedYears.map(y=>y===2026?'2026(YTD)':y).join('_');
+    downloadMapImage(`dengue_risk_map_${yearsLabel}`,
+      'Dengue Risk Map by Province', document.getElementById('ir-map-note').textContent, selectedYears);
+  });
+  window._riskMapGetInstances = () => activeMaps;
+
+  // ---- Province x Year table (with YoY trend arrows) ----
+  const years = myr.years;
+  const head = document.getElementById('tbl-multiyear-head');
+  document.getElementById('myr-ytd-month-label').textContent = MONTH_LABELS[lastReported2026-1];
+
+  const provRowsWhole = Object.keys(myr.province_series).map(p=>{
+    const s = myr.province_series[p];
+    const row = {province: p};
+    years.forEach(y=> row[y] = s.cases[String(y)] || 0);
+    return row;
+  }).sort((a,b)=> b[2026]-a[2026]);
+
+  // Same-period dataset: every year summed only Jan through the latest reported 2026 month,
+  // so a quiet early year isn't visually dwarfed by a full 12-month bar next to a 7-month 2026.
+  const provRowsYTD = Object.keys(myr.province_series).map(p=>{
+    const row = {province: p};
+    years.forEach(y=>{
+      if(y === 2026){
+        row[y] = myr.province_series[p].cases['2026'] || 0; // already through the latest reported month
+      } else {
+        const src = monthly.province_monthly_cases[p] || {};
+        const yr = src[String(y)] || {};
+        let sum = 0;
+        for(let m=1; m<=lastReported2026; m++){ sum += yr[String(m)] || 0; }
+        row[y] = sum;
+      }
+    });
+    return row;
+  }).sort((a,b)=> b[2026]-a[2026]);
+
+  let myrMode = 'whole';
+  let provRows = provRowsWhole;
+  const mtbody = document.querySelector('#tbl-multiyear tbody');
+  function trendArrow(curr, prev){
+    if(prev===undefined) return '';
+    if(prev===0 && curr===0) return '';
+    if(curr>prev) return ` <span style="color:var(--danger);font-size:10px;" title="Up vs previous year">▲</span>`;
+    if(curr<prev) return ` <span style="color:var(--positive);font-size:10px;" title="Down vs previous year">▼</span>`;
+    return ` <span style="color:var(--text-secondary);font-size:10px;" title="No change">▬</span>`;
+  }
+  function rebuildMultiYearHeader(){
+    head.innerHTML = '<th data-k="province">Province</th>' + years.map(y=>{
+      if(y===2026) return `<th data-k="${y}">2026 (YTD)</th>`;
+      const label = myrMode==='ytd' ? `${y} (Jan-${MONTH_LABELS[lastReported2026-1]})` : String(y);
+      return `<th data-k="${y}">${label}</th>`;
+    }).join('');
+  }
+  function drawMultiYear(rows){
+    const maxByYear = {};
+    years.forEach(y=> maxByYear[y] = Math.max(...rows.map(r=>r[y]), 1));
+    mtbody.innerHTML = rows.map(r=>{
+      const cells = years.map((y,idx)=>{
+        const v = r[y];
+        const prevY = years[idx-1];
+        const arrow = idx>0 ? trendArrow(v, r[prevY]) : '';
+        const intensity = Math.min(v / maxByYear[y], 1);
+        const bg = hexToRgba(PALETTE.turquoise, +(intensity*0.55).toFixed(2));
+        return `<td style="background:${bg}">${fmt(v)}${arrow}</td>`;
+      }).join('');
+      return `<tr><td>${r.province}</td>${cells}</tr>`;
+    }).join('');
+    const totalCells = years.map((y,idx)=>{
+      const totalV = rows.reduce((sum,r)=>sum+r[y],0);
+      const prevY = years[idx-1];
+      const prevTotal = idx>0 ? rows.reduce((sum,r)=>sum+r[prevY],0) : undefined;
+      const arrow = idx>0 ? trendArrow(totalV, prevTotal) : '';
+      return `<td>${fmt(totalV)}${arrow}</td>`;
+    }).join('');
+    mtbody.innerHTML += `<tr style="font-weight:700;background:${PALETTE.surfaceAlt};"><td>Total</td>${totalCells}</tr>`;
+  }
+  function handleMultiYearSort(){
+    const k = this.dataset.k;
+    if(k==='province'){ provRows.sort((a,b)=>a.province.localeCompare(b.province)); }
+    else{ provRows.sort((a,b)=> b[k]-a[k]); }
+    applyGlobalProvinceToMultiYear();
+  }
+  function rebindMultiYearHeaderClicks(){
+    document.querySelectorAll('#tbl-multiyear-head th').forEach(th=>{
+      th.addEventListener('click', handleMultiYearSort);
+    });
+  }
+  rebuildMultiYearHeader();
+  rebindMultiYearHeaderClicks();
+  drawMultiYear(provRows);
+  document.querySelectorAll('input[name="myr-view-mode"]').forEach(radio=>{
+    radio.addEventListener('change', ()=>{
+      myrMode = document.querySelector('input[name="myr-view-mode"]:checked').value;
+      provRows = myrMode === 'ytd' ? provRowsYTD : provRowsWhole;
+      rebuildMultiYearHeader();
+      rebindMultiYearHeaderClicks();
+      applyGlobalProvinceToMultiYear();
+    });
+  });
+
+  function applyGlobalProvinceToMultiYear(){
+    const v = gProvSelect.value; // full province name, matches provRows[].province directly
+    drawMultiYear(v==='__ALL__' ? provRows : provRows.filter(r=>r.province===v));
+  }
+  gProvSelect.addEventListener('change', applyGlobalProvinceToMultiYear);
+  applyGlobalProvinceToMultiYear();
+
+  const tbody = document.querySelector('#tbl-province tbody');
+  // Real year-by-year population for all 25 provinces, from NIS's official Population Projection
+  // 2020-2033 report (validated against the document's own national totals for every year — see README).
+  const fullPopulation = BUNDLE.full_population_2018_2026;
+  function getRealPop(abbrevProvince, year){
+    const fullName = myr.name_map[abbrevProvince];
+    const series = fullName ? fullPopulation[fullName] : undefined;
+    return series ? series[String(year)] : undefined;
+  }
+  let sortedProv = [...nat.provinces].map(p=>{
+    const pop2026 = getRealPop(p.province, 2026);
+    const pop2025 = getRealPop(p.province, 2025);
+    return { ...p,
+      ir2026: pop2026 ? +(p.cases2026/pop2026*100000).toFixed(1) : null,
+      ir2025: pop2025 ? +(p.cases2025/pop2025*100000).toFixed(1) : null,
+      population2026: pop2026, population2025: pop2025
+    };
+  }).sort((a,b)=>b.cases2026-a.cases2026);
+  function drawProvTable(rows){
+    tbody.innerHTML = rows.map(p=>`<tr><td>${p.province}</td><td>${fmt(p.cases2026)}</td><td>${fmt(p.cases2025)}</td><td>${p.ir2026==null?'—':p.ir2026}</td><td>${p.ir2025==null?'—':p.ir2025}</td><td>${fmt(p.deaths2026)}</td><td>${p.cfr2026}</td><td>${p.cfr2025}</td></tr>`).join('');
+    const totCases2026 = rows.reduce((s,p)=>s+p.cases2026,0);
+    const totCases2025 = rows.reduce((s,p)=>s+p.cases2025,0);
+    const totDeaths2026 = rows.reduce((s,p)=>s+p.deaths2026,0);
+    const totDeaths2025 = rows.reduce((s,p)=>s+p.deaths2025,0);
+    const totPop2026 = rows.reduce((s,p)=>s+(p.population2026||0),0);
+    const totPop2025 = rows.reduce((s,p)=>s+(p.population2025||0),0);
+    const totCfr2026 = totCases2026 ? (totDeaths2026/totCases2026*100).toFixed(3) : '0.000';
+    const totCfr2025 = totCases2025 ? (totDeaths2025/totCases2025*100).toFixed(3) : '0.000';
+    const totIr2026 = totPop2026 ? (totCases2026/totPop2026*100000).toFixed(1) : '—';
+    const totIr2025 = totPop2025 ? (totCases2025/totPop2025*100000).toFixed(1) : '—';
+    tbody.innerHTML += `<tr style="font-weight:700;background:${PALETTE.surfaceAlt};"><td>Total</td><td>${fmt(totCases2026)}</td><td>${fmt(totCases2025)}</td><td>${totIr2026}</td><td>${totIr2025}</td><td>${fmt(totDeaths2026)}</td><td>${totCfr2026}</td><td>${totCfr2025}</td></tr>`;
+  }
+  drawProvTable(sortedProv);
+  document.querySelectorAll('#tbl-province th').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const k = th.dataset.k;
+      sortedProv.sort((a,b)=> typeof a[k]==='string' ? a[k].localeCompare(b[k]) : (b[k]??-1)-(a[k]??-1));
+      drawProvTable(sortedProv);
+    });
+  });
+
+  function applyGlobalProvinceToProvTable(){
+    const vFull = gProvSelect.value; // full name -> convert to abbreviated code used in sortedProv[].province
+    if(vFull === '__ALL__'){ drawProvTable(sortedProv); return; }
+    const vAbbrev = abbrevFor(vFull);
+    drawProvTable(sortedProv.filter(p=>p.province===vAbbrev));
+  }
+  gProvSelect.addEventListener('change', applyGlobalProvinceToProvTable);
+  applyGlobalProvinceToProvTable();
+}
+
+// ---- BATTAMBANG ----
+renderNational();
+
+// ---- Download buttons: PNG for every chart, CSV for every table ----
+function slugify(text){
+  return text.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,60) || 'export';
+}
+function computeGeoBounds(geoData){
+  let minLng=Infinity, maxLng=-Infinity, minLat=Infinity, maxLat=-Infinity;
+  geoData.features.forEach(f=>{
+    const geom = f.geometry;
+    const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
+    polys.forEach(poly=> poly.forEach(ring=> ring.forEach(([lng,lat])=>{
+      if(lng<minLng) minLng=lng; if(lng>maxLng) maxLng=lng;
+      if(lat<minLat) minLat=lat; if(lat>maxLat) maxLat=lat;
+    })));
+  });
+  return {minLng,maxLng,minLat,maxLat};
+}
+// Draws the choropleth directly with Canvas 2D — no DOM screenshot library involved, so there's no
+// risk of Leaflet's CSS-transformed panes being captured off-position (the bug that caused the
+// exported map to render hugging the top-left instead of centered).
+function drawStaticMapToCanvas(ctx, width, height, year, opts){
+  const geoData = BUNDLE.cambodia_geo;
+  const irData = BUNDLE.ir_heatmap;
+  const keyFacilities = BUNDLE.key_facilities;
+  const GEO_NAME_MAP = window._GEO_NAME_MAP;
+  const irColorFn = window._irColorFn;
+  const bounds = window._geoBoundsCache || (window._geoBoundsCache = computeGeoBounds(geoData));
+  const {minLng,maxLng,minLat,maxLat} = bounds;
+  const pad = opts.padding || 20;
+  const lngSpan = maxLng-minLng, latSpan = maxLat-minLat;
+  const scale = Math.min((width-2*pad)/lngSpan, (height-2*pad)/latSpan);
+  const offX = pad + (width-2*pad - lngSpan*scale)/2;
+  const offY = pad + (height-2*pad - latSpan*scale)/2;
+  function project(lng, lat){ return [offX + (lng-minLng)*scale, offY + (maxLat-lat)*scale]; }
+
+  ctx.fillStyle = PALETTE.surfaceAlt;
+  ctx.fillRect(0,0,width,height);
+
+  geoData.features.forEach(f=>{
+    const provName = GEO_NAME_MAP[f.properties.name] || f.properties.name;
+    const ir = irData.ir_by_province_year[provName] ? (irData.ir_by_province_year[provName][String(year)] ?? 0) : 0;
+    const geom = f.geometry;
+    const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
+    polys.forEach(poly=>{
+      ctx.beginPath();
+      poly.forEach(ring=>{
+        ring.forEach(([lng,lat], i)=>{
+          const [x,y] = project(lng,lat);
+          if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        });
+        ctx.closePath();
+      });
+      ctx.fillStyle = irColorFn(ir);
+      ctx.fill('evenodd');
+      ctx.strokeStyle = PALETTE.textBody;
+      ctx.lineWidth = opts.labels ? 1.3 : 0.9;
+      ctx.stroke();
+    });
+  });
+
+  if(opts.labels){
+    geoData.features.forEach(f=>{
+      const provName = GEO_NAME_MAP[f.properties.name] || f.properties.name;
+      const ir = irData.ir_by_province_year[provName] ? (irData.ir_by_province_year[provName][String(year)] ?? null) : null;
+      const geom = f.geometry;
+      const polys = geom.type==='Polygon' ? [geom.coordinates] : geom.coordinates;
+      let largest = polys[0][0];
+      polys.forEach(poly=>{ if(poly[0].length>largest.length) largest = poly[0]; });
+      let sx=0, sy=0;
+      largest.forEach(([lng,lat])=>{ const [x,y]=project(lng,lat); sx+=x; sy+=y; });
+      const cx = sx/largest.length, cy = sy/largest.length;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = 'bold 11px Arial'; ctx.strokeStyle = PALETTE.surface; ctx.lineWidth = 3; ctx.fillStyle = PALETTE.textBody;
+      ctx.strokeText(provName, cx, cy-6); ctx.fillText(provName, cx, cy-6);
+      ctx.font = '10px Arial';
+      const irLabel = ir!=null ? 'IR: '+ir.toFixed(1) : 'IR: n/a';
+      ctx.strokeText(irLabel, cx, cy+7); ctx.fillText(irLabel, cx, cy+7);
+    });
+  }
+  if(opts.hospitals){
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    keyFacilities.forEach(fac=>{
+      const [x,y] = project(fac.long, fac.lat);
+      const isNH = fac.type === 'NH';
+      ctx.fillStyle = isNH ? PALETTE.turquoise : PALETTE.green;
+      ctx.font = (isNH?'16px ':'14px ')+'Arial';
+      ctx.fillText(isNH?'★':'▲', x, y);
+    });
+  }
+  if(opts.neighbors){
+    const NEIGHBORS = [{name:'THAILAND',lat:13.6,lng:102.15},{name:'LAO PDR',lat:15.0,lng:106.3},{name:'VIETNAM',lat:10.7,lng:107.85}];
+    ctx.font = 'bold 12px Arial'; ctx.fillStyle = PALETTE.turquoise; ctx.textAlign='center'; ctx.textBaseline='middle';
+    NEIGHBORS.forEach(n=>{ const [x,y] = project(n.lng, n.lat); ctx.fillText(n.name, x, y); });
+  }
+}
+function drawMapLegend(ctx, x, y, width){
+  const IR_BINS = window._IR_BINS;
+  const swatchSize = 16, gap = 10, itemPad = 8;
+  ctx.font = '13px Arial'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  let cx = x, cy = y + swatchSize/2;
+  const items = IR_BINS.map(b=>({type:'swatch', color:b.color, label:b.label}))
+    .concat([{type:'symbol', symbol:'▲', color:PALETTE.green, label:'Provincial Referral Hospital'},
+             {type:'symbol', symbol:'★', color:PALETTE.turquoise, label:'National Hospital'}]);
+  items.forEach(item=>{
+    const label = item.label;
+    const labelWidth = ctx.measureText(label).width;
+    const itemWidth = swatchSize + 6 + labelWidth + itemPad*2;
+    if(cx + itemWidth > x + width){ cx = x; cy += swatchSize + 10; }
+    if(item.type==='swatch'){
+      ctx.fillStyle = item.color; ctx.strokeStyle = PALETTE.grid; ctx.lineWidth = 1;
+      ctx.fillRect(cx, cy - swatchSize/2, swatchSize, swatchSize);
+      ctx.strokeRect(cx, cy - swatchSize/2, swatchSize, swatchSize);
+    } else {
+      ctx.fillStyle = item.color; ctx.font = '15px Arial'; ctx.textAlign='center';
+      ctx.fillText(item.symbol, cx + swatchSize/2, cy);
+      ctx.font = '13px Arial'; ctx.textAlign = 'left';
+    }
+    ctx.fillStyle = PALETTE.textBody;
+    ctx.fillText(label, cx + swatchSize + 6, cy);
+    cx += itemWidth;
+  });
+  return cy + swatchSize/2 + 10; // bottom y of legend, for stacking footer below it
+}
+function downloadMapImage(filename, titleText, footerText, selectedYears){
+  if(!selectedYears || selectedYears.length===0) return;
+  const cellW = 900, cellH = 620;
+  const cols = selectedYears.length===1 ? 1 : Math.ceil(Math.sqrt(selectedYears.length));
+  const rows = selectedYears.length===1 ? 1 : Math.ceil(selectedYears.length/cols);
+  const titleHeight = 46;
+  const legendHeight = 70; // reserve two rows' worth; drawMapLegend wraps as needed within this
+  const footerHeight = footerText ? 30 : 0;
+  const tmp = document.createElement('canvas');
+  tmp.width = cellW*cols;
+  tmp.height = cellH*rows + titleHeight + legendHeight + footerHeight;
+  const ctx = tmp.getContext('2d');
+  ctx.fillStyle = PALETTE.surface; ctx.fillRect(0,0,tmp.width,tmp.height);
+  ctx.fillStyle = PALETTE.darkBlue; ctx.font = 'bold 22px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(titleText || filename, 16, titleHeight/2);
+
+  selectedYears.forEach((y,i)=>{
+    const col = i % cols, row = Math.floor(i/cols);
+    const sub = document.createElement('canvas');
+    sub.width = cellW; sub.height = cellH;
+    const sctx = sub.getContext('2d');
+    drawStaticMapToCanvas(sctx, cellW, cellH, y, {
+      labels: selectedYears.length===1, hospitals: selectedYears.length<=2,
+      neighbors: selectedYears.length===1, padding: 30
+    });
+    ctx.drawImage(sub, col*cellW, titleHeight + row*cellH);
+    ctx.fillStyle = PALETTE.darkBlue; ctx.font = 'bold 15px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    const yLabel = y===2026 ? '2026 (YTD)' : String(y);
+    ctx.fillText(yLabel, col*cellW + 12, titleHeight + row*cellH + 10);
+  });
+
+  drawMapLegend(ctx, 16, titleHeight + cellH*rows + 14, tmp.width - 32);
+
+  if(footerText){
+    ctx.fillStyle = PALETTE.textMuted; ctx.font = '13px Arial'; ctx.textAlign='left'; ctx.textBaseline='top';
+    ctx.fillText(footerText, 16, titleHeight + cellH*rows + legendHeight, tmp.width - 32);
+  }
+  const url = tmp.toDataURL('image/png');
+  const a = document.createElement('a'); a.href = url; a.download = filename + '.png';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function downloadChartImage(canvasId, filename, titleText, subtitleText, footerText){
+  const canvas = document.getElementById(canvasId);
+  const chart = Chart.getChart(canvas);
+  if(!chart){ return; }
+  const scale = canvas.width / canvas.clientWidth || 1;
+  const titleHeight = Math.round(44 * scale);
+  const subtitleHeight = subtitleText ? Math.round(28 * scale) : 0;
+  // Wrap footer text to the canvas width so long summaries don't get clipped
+  const footerFontSize = Math.round(14*scale);
+  let footerLines = [];
+  if(footerText){
+    const maxWidth = canvas.width - Math.round(28*scale);
+    const measureCtx = document.createElement('canvas').getContext('2d');
+    measureCtx.font = `${footerFontSize}px Arial`;
+    const words = footerText.split(' ');
+    let line = '';
+    words.forEach(word=>{
+      const test = line ? line + ' ' + word : word;
+      if(measureCtx.measureText(test).width > maxWidth && line){
+        footerLines.push(line); line = word;
+      } else { line = test; }
+    });
+    if(line) footerLines.push(line);
+  }
+  const footerLineHeight = Math.round(20*scale);
+  const footerHeight = footerLines.length ? footerLines.length*footerLineHeight + Math.round(14*scale) : 0;
+
+  const tmp = document.createElement('canvas');
+  tmp.width = canvas.width;
+  tmp.height = canvas.height + titleHeight + subtitleHeight + footerHeight;
+  const ctx = tmp.getContext('2d');
+  ctx.fillStyle = PALETTE.surface;
+  ctx.fillRect(0,0,tmp.width,tmp.height);
+  ctx.fillStyle = PALETTE.darkBlue;
+  ctx.font = `bold ${Math.round(18*scale)}px Arial`;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(titleText || filename, Math.round(14*scale), titleHeight/2);
+  if(subtitleText){
+    ctx.fillStyle = PALETTE.textMuted;
+    ctx.font = `${Math.round(13*scale)}px Arial`;
+    ctx.fillText(subtitleText, Math.round(14*scale), titleHeight + subtitleHeight/2);
+  }
+  ctx.drawImage(canvas, 0, titleHeight + subtitleHeight);
+  if(footerLines.length){
+    ctx.fillStyle = PALETTE.textMuted;
+    ctx.font = `${footerFontSize}px Arial`;
+    ctx.textBaseline = 'top';
+    let fy = titleHeight + subtitleHeight + canvas.height + Math.round(10*scale);
+    footerLines.forEach(line=>{
+      ctx.fillText(line, Math.round(14*scale), fy);
+      fy += footerLineHeight;
+    });
+  }
+  const url = tmp.toDataURL('image/png');
+  const a = document.createElement('a'); a.href = url; a.download = filename + '.png';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function downloadTableCSV(tableId, filename, titleText, subtitleText){
+  const table = document.getElementById(tableId);
+  const rows = Array.from(table.querySelectorAll('tr'));
+  const dataCsv = rows.map(row => Array.from(row.children).map(cell => {
+    let text = cell.textContent.replace(/[▲▼▬]/g,'').replace(/\s+/g,' ').trim();
+    text = text.replace(/"/g,'""');
+    return `"${text}"`;
+  }).join(',')).join('\r\n');
+  let header = `"${(titleText || filename).replace(/"/g,'""')}"\r\n`;
+  if(subtitleText) header += `"${subtitleText.replace(/"/g,'""')}"\r\n`;
+  const csv = header + dataCsv;
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+// Reads the currently active filter controls inside a card (province/year selects, custom
+// multi-select dropdowns, checkboxes) so the export reflects what's actually on screen right now.
+const GLOBAL_FILTER_CHART_IDS = ['chart-trend-yearly', 'chart-severity-timeline'];
+function getActiveFiltersText(card){
+  const canvasInCard = card.querySelector('canvas[id]');
+  if(canvasInCard && GLOBAL_FILTER_CHART_IDS.includes(canvasInCard.id)){
+    const parts = [];
+    const provSel = document.getElementById('global-province-select');
+    if(provSel) parts.push(provSel.options[provSel.selectedIndex].textContent);
+    const fy = document.getElementById('global-from-year'), fm = document.getElementById('global-from-month');
+    const ty = document.getElementById('global-to-year'), tm = document.getElementById('global-to-month');
+    if(fy && fm && ty && tm){
+      parts.push(`${fm.options[fm.selectedIndex].textContent} ${fy.value} to ${tm.options[tm.selectedIndex].textContent} ${ty.value}`);
+    }
+    return parts.join(' · ');
+  }
+  const parts = [];
+  card.querySelectorAll('select').forEach(sel=>{
+    if(sel.options.length <= 1) return;
+    if(sel.multiple){
+      const selected = Array.from(sel.selectedOptions).map(o=>o.textContent).join(', ');
+      if(selected) parts.push(selected);
+    } else {
+      parts.push(sel.options[sel.selectedIndex].textContent);
+    }
+  });
+  card.querySelectorAll('.msdd-btn').forEach(btn=>{
+    const t = btn.textContent.replace('▾','').trim();
+    if(t) parts.push(t);
+  });
+  return parts.join(' · ');
+}
+function addDownloadUI(){
+  document.querySelectorAll('.card').forEach(card => {
+    if(card.querySelector('.dl-btn-group')) return; // already processed
+    const h3 = card.querySelector('h3');
+    if(!h3) return;
+    const canvas = card.querySelector('canvas[id]');
+    const table = card.querySelector('table[id]');
+    if(!canvas && !table) return;
+
+    const row = document.createElement('div');
+    row.className = 'card-title-row';
+    const btnGroup = document.createElement('div');
+    btnGroup.className = 'dl-btn-group';
+    const rawTitle = h3.textContent.trim();
+
+    if(canvas){
+      const btn = document.createElement('button');
+      btn.className = 'dl-btn'; btn.type = 'button'; btn.textContent = '⬇ PNG';
+      btn.addEventListener('click', ()=>{
+        const filterText = getActiveFiltersText(card);
+        const filename = slugify(rawTitle + (filterText ? ' ' + filterText : ''));
+        // Charts with a live summary caption (e.g. 2026 YTD note) get it baked into the image too
+        let footer = '';
+        const noteEl = card.querySelector('.chart-note');
+        if(noteEl && noteEl.textContent.trim()) footer = noteEl.textContent.trim();
+        downloadChartImage(canvas.id, filename, rawTitle, filterText, footer);
+      });
+      btnGroup.appendChild(btn);
+    }
+    if(table){
+      const btn = document.createElement('button');
+      btn.className = 'dl-btn'; btn.type = 'button'; btn.textContent = '⬇ CSV';
+      btn.addEventListener('click', ()=>{
+        const filterText = getActiveFiltersText(card);
+        const filename = slugify(rawTitle + (filterText ? ' ' + filterText : ''));
+        downloadTableCSV(table.id, filename, rawTitle, filterText);
+      });
+      btnGroup.appendChild(btn);
+    }
+    h3.parentNode.insertBefore(row, h3);
+    row.appendChild(h3);
+    row.appendChild(btnGroup);
+  });
+}
+addDownloadUI();
+// Re-scan after tab/subtab switches, since some charts/tables only render the first time their pane is opened
+document.querySelectorAll('.tab-btn, .subtab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=> setTimeout(addDownloadUI, 100));
+});
+
+})();
+</script>
+</body>
+</html>
