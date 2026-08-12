@@ -121,15 +121,23 @@ tr:hover td{background:var(--surface-alt);}
 .prov-label-dark{color:var(--text-body);text-shadow:0 0 3px var(--surface),0 0 3px var(--surface),0 0 3px var(--surface),0 0 3px var(--surface);}
 .prov-label-light{color:var(--surface);text-shadow:0 0 3px var(--text-body),0 0 3px var(--text-body),0 0 3px var(--text-body),0 0 3px var(--text-body);}
 .legend-item{display:flex;align-items:center;gap:6px;}
+/* The heatmap legend (N9) builds its swatches as bare <i> tags with only a background colour.
+   Inline elements have no intrinsic box, so they were rendering as 1px slivers. */
+.legend-box span{display:inline-flex;align-items:center;gap:6px;}
+.legend-box i{display:inline-block;width:14px;height:14px;border-radius:3px;flex-shrink:0;}
 .dot{width:11px;height:11px;border-radius:50%;display:inline-block;}
 footer{text-align:center;font-size:11px;color:var(--text-secondary);padding:18px 0;}
 .filter-row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
 .filter-row select{padding:6px 10px;border-radius:6px;border:1px solid var(--border);font-size:13px;background:var(--surface);max-width:100%;}
-.msdd-wrap{position:relative;display:inline-block;}
+/* Raised above the Leaflet map. Leaflet's own panes sit at z-index 400-700 and its controls
+   at 800-1000; the dropdown was at 50, so any panel opened over a map was painted underneath
+   the country polygons. .msdd-wrap gets an isolated stacking context so the panel clears the
+   map without also floating over the KPI tooltip (z-index 2000). */
+.msdd-wrap{position:relative;display:inline-block;z-index:1200;}
 .msdd-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-size:13px;cursor:pointer;min-width:170px;text-align:left;color:var(--text-primary);max-width:100%;}
 .msdd-btn:hover{border-color:var(--accent);}
 .msdd-btn::after{content:'▾';float:right;color:var(--text-secondary);}
-.msdd-panel{display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 1px 2px rgba(16,24,40,0.05);padding:8px;z-index:50;max-height:240px;overflow-y:auto;min-width:170px;max-width:calc(100vw - 32px);}
+.msdd-panel{display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 14px rgba(16,24,40,0.16);padding:8px;z-index:1201;max-height:240px;overflow-y:auto;min-width:170px;max-width:calc(100vw - 32px);}
 .msdd-panel.open{display:block;}
 .msdd-item{display:flex;align-items:center;gap:7px;padding:5px 8px;font-size:13px;cursor:pointer;border-radius:5px;}
 .msdd-item:hover{background:var(--surface-alt);}
@@ -325,7 +333,7 @@ footer{text-align:center;font-size:11px;color:var(--text-secondary);padding:18px
       </div>
       <div class="card" style="margin-bottom:var(--gap);">
         <h3><span class="vno">N3</span>Monthly Case Composition by Severity — DF, DHF, DSS and Deaths</h3>
-        <div class="note">Stacked bars = DF / DHF / DSS / Deaths (DHFD) case mix by month. Dashed line = DSS share of that month, right axis. Year labels are centered under each year's group of monthly bars. 2026 months (severity mix not split in the source) show as a single gray "Total cases" bar.</div>
+        <div class="note">Stacked bars = DF / DHF / DSS / Deaths (DHFD) case mix by month. Dotted red line = deaths that month on the right axis, labelled where a death occurred — as a stack segment they are far too small to see. Year labels are centered under each year's group of monthly bars. 2026 months (severity mix not split in the source) show as a single gray "Total cases" bar.</div>
         <div class="note mobile-only" style="margin-bottom:6px;">Swipe the chart sideways to reach later months, the DSS % axis and the legend.</div>
         <div class="scroll-x"><div id="severity-timeline-wrap" class="chart-box" style="height:360px;position:relative;"><canvas id="chart-severity-timeline"></canvas></div></div>
         <div class="note chart-note" id="severity-2026-note" style="margin-top:8px;"></div>
@@ -1545,12 +1553,41 @@ function renderNational(){
         ctx.restore();
       }
     };
+    // Death count printed at every point on the line. Gold on white is far too low-contrast to
+    // read as text, so the number is drawn in body colour with a white halo — the same treatment
+    // the map uses for province labels over coloured polygons. Where the line runs near the top
+    // of the plot the label flips below the point, so it can't be clipped or collide with the
+    // "elevated mortality" annotation sitting above the bar.
+    const deathValueLabelPluginN2 = {
+      id: 'deathValueLabelN2',
+      afterDatasetsDraw(chart){
+        if(!chart.isDatasetVisible(1)) return;
+        const meta = chart.getDatasetMeta(1);
+        const area = chart.chartArea;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = narrow ? '700 8.5px Arial' : '700 10.5px Arial';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+        meta.data.forEach((pt, i)=>{
+          const v = rows[i] && rows[i].deaths;
+          if(v==null) return;
+          const nearTop = (pt.y - area.top) < (area.bottom - area.top) * 0.22;
+          const y = nearTop ? pt.y + 15 : pt.y - 10;
+          const text = fmt(v);
+          ctx.strokeStyle = PALETTE.surface; ctx.lineWidth = 3.5;
+          ctx.strokeText(text, pt.x, y);
+          ctx.fillStyle = PALETTE.textBody;
+          ctx.fillText(text, pt.x, y);
+        });
+        ctx.restore();
+      }
+    };
     const caseValues = n2Metric === 'ir' ? rows.map(y=>y.ir) : rows.map(y=>y.cases);
     yearlyTrendChart = new Chart(document.getElementById('chart-trend-yearly'), {
       data:{ labels: rows.map(y=> y.year===2026 ? '2026 (YTD)' : String(y.year)),
         datasets:[
           {type:'bar', label: n2Metric==='ir'?'IR per 100,000':'Cases', data: caseValues, backgroundColor: rows.map(y=>y.year===2026?hatch2026:COLORS[0]), yAxisID:'y', order:2, pointStyle:'rect'},
-          {type:'line', label:'Deaths', data: rows.map(y=>y.deaths), borderColor: COLORS[3], backgroundColor: COLORS[3], yAxisID:'y1', tension:.3, pointRadius:4, borderWidth:3, order:1, pointStyle:'line'}
+          {type:'line', label:'Deaths', data: rows.map(y=>y.deaths), borderColor: PALETTE.gold, backgroundColor: PALETTE.gold, yAxisID:'y1', tension:.3, pointRadius:4, borderWidth:3, order:1, pointStyle:'line'}
         ]},
       options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'top', labels:{usePointStyle:true}}},
         scales:{
@@ -1559,7 +1596,7 @@ function renderNational(){
           x:{ ticks:{ maxRotation: narrow?60:0, minRotation: narrow?60:0, font:{size: narrow?9:11} } }
         }
       },
-      plugins: [yearAnnotationPlugin, barValueLabelPluginN2]
+      plugins: [yearAnnotationPlugin, barValueLabelPluginN2, deathValueLabelPluginN2]
     });
     const peak = [...rows].sort((a,b)=>b.cases-a.cases)[0];
     const scopeLabel = range.province === '__ALL__' ? 'Cambodia' : range.province;
@@ -1589,7 +1626,7 @@ function renderNational(){
     const prov = range.province;
     const sev = prov==='__ALL__' ? sevNational : (sevByProvince[prov] || {});
     const months = monthsInRange(range.fromIdx, range.toIdx);
-    const sevLabels = [], dfArr=[], dhfArr=[], dssArr=[], dhfdArr=[], total2026Arr=[], dssPctArr=[];
+    const sevLabels = [], dfArr=[], dhfArr=[], dssArr=[], dhfdArr=[], total2026Arr=[], deathsArr=[];
     let has2026 = false;
     let totDF=0, totDHF=0, totDSS=0, totDHFD=0;
     const yearAtIndex = [];
@@ -1603,14 +1640,16 @@ function renderNational(){
         has2026 = true;
         const {cases, deaths} = getCasesDeaths(prov, y, mi);
         dfArr.push(0); dhfArr.push(0); dssArr.push(0); dhfdArr.push(0);
-        total2026Arr.push(cases); dssPctArr.push(null);
+        total2026Arr.push(cases);
+        // The source carries no severity split for 2026, but it does carry deaths — so the
+        // deaths line stays continuous across the 2025/2026 boundary instead of dropping to zero.
+        deathsArr.push(cases==null ? null : deaths);
       } else {
         const cats = (sev[String(y)]||{})[String(mi)] || {};
         const df=cats.DF||0, dhf=cats.DHF||0, dss=cats.DSS||0, dhfd=cats.DHFD||0;
         dfArr.push(df); dhfArr.push(dhf); dssArr.push(dss); dhfdArr.push(dhfd);
         total2026Arr.push(null);
-        const tot = df+dhf+dss+dhfd;
-        dssPctArr.push(tot>0 ? +(dss/tot*100).toFixed(2) : null);
+        deathsArr.push(dhfd);
         totDF+=df; totDHF+=dhf; totDSS+=dss; totDHFD+=dhfd;
       }
     });
@@ -1632,7 +1671,7 @@ function renderNational(){
     if(has2026){
       datasets.push({type:'bar', label:'Total cases (2026 — severity mix unavailable)', data: total2026Arr, backgroundColor:hatchPattern(PALETTE.textMuted), stack:'s', yAxisID:'y', order:2, pointStyle:'rect'});
     }
-    datasets.push({type:'line', label:'DSS share (right axis)', data: dssPctArr, borderColor:PALETTE.darkRed, backgroundColor:PALETTE.darkRed, yAxisID:'y1', tension:.25, pointRadius:0, borderWidth:1.75, borderDash:[6,4], order:1, pointStyle:'line', spanGaps:false});
+    datasets.push({type:'line', label:'Deaths (right axis)', data: deathsArr, borderColor:PALETTE.darkRed, backgroundColor:PALETTE.darkRed, yAxisID:'y1', tension:.2, pointRadius:2.4, pointHoverRadius:5, borderWidth:1.6, borderDash:[2,3], order:1, pointStyle:'line', spanGaps:false});
     // Draws a subtle vertical divider at each year boundary and the year number centred under
     // that year's group of month bars — keeps the year visually separate from the month letters
     // rather than merging them into one tick label.
@@ -1680,6 +1719,30 @@ function renderNational(){
         ctx.restore();
       }
     };
+    // Small death count above each point, only where a death actually occurred — printing a row
+    // of zeros across every quiet month would bury the months that matter. White halo so the
+    // number stays readable where the line crosses a stacked bar.
+    const deathPointLabelPlugin = {
+      id: 'deathPointLabel',
+      afterDatasetsDraw(chart){
+        const dsIndex = chart.data.datasets.length - 1; // deaths line is pushed last
+        if(!chart.isDatasetVisible(dsIndex)) return;
+        const meta = chart.getDatasetMeta(dsIndex);
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '700 8.5px Arial';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+        meta.data.forEach((pt,i)=>{
+          const v = deathsArr[i];
+          if(!v) return;
+          ctx.strokeStyle = PALETTE.surface; ctx.lineWidth = 3;
+          ctx.strokeText(String(v), pt.x, pt.y - 9);
+          ctx.fillStyle = PALETTE.darkRed;
+          ctx.fillText(String(v), pt.x, pt.y - 9);
+        });
+        ctx.restore();
+      }
+    };
     severityChart = new Chart(sevCanvas, {
       data:{ labels: sevLabels, datasets },
       options:{
@@ -1689,10 +1752,10 @@ function renderNational(){
         scales:{
           x:{ stacked:true, ticks:{autoSkip:false, maxRotation:0, minRotation:0, font:{size:10.5, weight:'400'}, color:PALETTE.textMuted} },
           y:{ stacked:true, beginAtZero:true, position:'left', title:{display:true, text:'Cases'} },
-          y1:{ beginAtZero:true, position:'right', title:{display:true, text:'DSS %'}, grid:{drawOnChartArea:false}, ticks:{callback:v=>v+'%'} }
+          y1:{ beginAtZero:true, position:'right', title:{display:true, text:'Deaths'}, grid:{drawOnChartArea:false}, ticks:{precision:0} }
         }
       },
-      plugins: [yearDividerPlugin, stackTotalLabelPlugin]
+      plugins: [yearDividerPlugin, stackTotalLabelPlugin, deathPointLabelPlugin]
     });
     requestAnimationFrame(()=> severityChart.resize());
 
@@ -1701,7 +1764,7 @@ function renderNational(){
     const pct = n => grandTotal ? (n/grandTotal*100).toFixed(1) : '0.0';
     const yearsShown = [...new Set(months.filter(m=>m.year<2026).map(m=>m.year))];
     const noteParts = [];
-    noteParts.push(`${scopeLabel}, ${rangeLabel(range)}: DF — ${fmt(totDF)} (${pct(totDF)}%) · DHF — ${fmt(totDHF)} (${pct(totDHF)}%) · DSS — ${fmt(totDSS)} (${pct(totDSS)}%) · Deaths (DHFD) — ${fmt(totDHFD)} (${pct(totDHFD)}%). DSS share on the right axis (dashed).`);
+    noteParts.push(`${scopeLabel}, ${rangeLabel(range)}: DF — ${fmt(totDF)} (${pct(totDF)}%) · DHF — ${fmt(totDHF)} (${pct(totDHF)}%) · DSS — ${fmt(totDSS)} (${pct(totDSS)}%) · Deaths (DHFD) — ${fmt(totDHFD)} (${pct(totDHFD)}%). Deaths per month on the right axis (dotted red).`);
     if(has2026) noteParts.push(`Severity is reported for ${yearsShown.length ? yearsShown[0]+'-'+yearsShown[yearsShown.length-1] : 'the historical years'} only — the source carries no severity split for 2026 YTD (shown in gray).`);
     document.getElementById('severity-2026-note').textContent = noteParts.join(' ');
   }
