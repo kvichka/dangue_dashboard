@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<title>Dengue Situation Dashboard — Cambodia</title>
+<title>Dengue Situation Dashboard — Cambodia / Battambang (Wolbachia Program)</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -234,8 +234,8 @@ footer{text-align:center;font-size:11px;color:var(--text-secondary);padding:18px
 <div class="wrap">
   <header class="top">
     <div>
-      <h1>Dengue Situation Dashboard (Internal only)</h1>
-      <p>National Surveillance — DHF Weekly Report — Week 31, 2026</p>
+      <h1>Dengue Situation Dashboard</h1>
+      <p>National Surveillance — DHF Weekly Report — Week 27, 2026</p>
     </div>
   </header>
 
@@ -2241,6 +2241,12 @@ function renderNational(){
   }
   window._GEO_NAME_MAP = GEO_NAME_MAP;
   window._irColorFn = irColor;
+  // The PNG export draws its own map with Canvas 2D (it can't screenshot Leaflet's transformed
+  // panes reliably), so it needs the SAME value lookup the on-screen map uses. Reading the IR
+  // table directly here was the bug: in Cases mode the export coloured IR values against
+  // case-count bins, so every province fell in the lowest bin and the map came out blank.
+  window._mapValueFor = (province, year) => valueFor(province, String(year));
+  window._mapMetric = () => mapMetric;
   window._IR_BINS = CURRENT_BINS;
   refreshMapLegend();
 
@@ -2248,6 +2254,7 @@ function renderNational(){
   // Provinces small/thin enough on the map that an in-place label would be unreadable — these
   // get a numbered badge instead, with the actual values listed in a footnote below the map.
   const SMALL_PROVINCES = ['Pailin', 'Kandal', 'Phnom Penh', 'Preah Sihanouk', 'Kep'];
+  window._SMALL_PROVINCES = SMALL_PROVINCES;
   function drawChoropleth(map, year, {labels, hospitals}){
     const smallProvinceEntries = [];
     const unit = mapMetric === 'ir' ? ' per 100,000' : ' cases';
@@ -2421,8 +2428,10 @@ function renderNational(){
   document.getElementById('ir-map-download-btn').addEventListener('click', ()=>{
     const selectedYears = irMapYearDD.getSelected();
     const yearsLabel = selectedYears.map(y=>y===2026?'2026(YTD)':y).join('_');
-    downloadMapImage(`dengue_risk_map_${yearsLabel}`,
-      'Dengue Risk Map by Province', document.getElementById('ir-map-note').textContent, selectedYears);
+    const metricSlug = mapMetric==='cases' ? 'cases' : 'ir';
+    const metricTitle = mapMetric==='cases' ? 'Cases' : 'Incidence Rate per 100,000';
+    downloadMapImage(`dengue_risk_map_${metricSlug}_${yearsLabel}`,
+      `Dengue Risk Map by Province — ${metricTitle}`, document.getElementById('ir-map-note').textContent, selectedYears);
   });
   window._riskMapGetInstances = () => activeMaps;
 
@@ -2606,6 +2615,10 @@ function drawStaticMapToCanvas(ctx, width, height, year, opts){
   const keyFacilities = BUNDLE.key_facilities;
   const GEO_NAME_MAP = window._GEO_NAME_MAP;
   const irColorFn = window._irColorFn;
+  const SMALL_PROVINCES = window._SMALL_PROVINCES || [];
+  const exportMetric = window._mapMetric ? window._mapMetric() : 'ir';
+  const valueForExport = (prov, yr) => window._mapValueFor ? window._mapValueFor(prov, yr) : 0;
+  const valueLabel = v => v==null ? 'n/a' : (exportMetric==='ir' ? 'IR: '+v.toFixed(1) : 'Cases: '+v.toLocaleString());
   const bounds = window._geoBoundsCache || (window._geoBoundsCache = computeGeoBounds(geoData));
   const {minLng,maxLng,minLat,maxLat} = bounds;
   const pad = opts.padding || 20;
@@ -2620,7 +2633,7 @@ function drawStaticMapToCanvas(ctx, width, height, year, opts){
 
   geoData.features.forEach(f=>{
     const provName = GEO_NAME_MAP[f.properties.name] || f.properties.name;
-    const ir = irData.ir_by_province_year[provName] ? (irData.ir_by_province_year[provName][String(year)] ?? 0) : 0;
+    const ir = valueForExport(provName, year);
     const geom = f.geometry;
     const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
     polys.forEach(poly=>{
@@ -2641,9 +2654,10 @@ function drawStaticMapToCanvas(ctx, width, height, year, opts){
   });
 
   if(opts.labels){
+    const smallEntries = [];
     geoData.features.forEach(f=>{
       const provName = GEO_NAME_MAP[f.properties.name] || f.properties.name;
-      const ir = irData.ir_by_province_year[provName] ? (irData.ir_by_province_year[provName][String(year)] ?? null) : null;
+      const v = valueForExport(provName, year);
       const geom = f.geometry;
       const polys = geom.type==='Polygon' ? [geom.coordinates] : geom.coordinates;
       let largest = polys[0][0];
@@ -2651,12 +2665,23 @@ function drawStaticMapToCanvas(ctx, width, height, year, opts){
       let sx=0, sy=0;
       largest.forEach(([lng,lat])=>{ const [x,y]=project(lng,lat); sx+=x; sy+=y; });
       const cx = sx/largest.length, cy = sy/largest.length;
+      // Same five provinces the on-screen map numbers instead of labelling — without this the
+      // export crammed Pailin / Kandal / Phnom Penh / Kep on top of each other, and the numbered
+      // footnote underneath referred to badges that were never drawn.
+      if(SMALL_PROVINCES.includes(provName)){ smallEntries.push({cx, cy}); return; }
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = 'bold 11px Arial'; ctx.strokeStyle = PALETTE.surface; ctx.lineWidth = 3; ctx.fillStyle = PALETTE.textBody;
       ctx.strokeText(provName, cx, cy-6); ctx.fillText(provName, cx, cy-6);
       ctx.font = '10px Arial';
-      const irLabel = ir!=null ? 'IR: '+ir.toFixed(1) : 'IR: n/a';
-      ctx.strokeText(irLabel, cx, cy+7); ctx.fillText(irLabel, cx, cy+7);
+      ctx.strokeText(valueLabel(v), cx, cy+7); ctx.fillText(valueLabel(v), cx, cy+7);
+    });
+    smallEntries.forEach((e,i)=>{
+      ctx.beginPath(); ctx.arc(e.cx, e.cy, 10, 0, Math.PI*2);
+      ctx.fillStyle = PALETTE.darkBlue; ctx.fill();
+      ctx.strokeStyle = PALETTE.surface; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = PALETTE.surface; ctx.font = 'bold 11px Arial';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(i+1), e.cx, e.cy);
     });
   }
   if(opts.hospitals){
@@ -2677,8 +2702,14 @@ function drawStaticMapToCanvas(ctx, width, height, year, opts){
 }
 function drawMapLegend(ctx, x, y, width){
   const IR_BINS = window._IR_BINS;
+  const unitNote = (window._mapMetric && window._mapMetric()==='cases')
+    ? 'case count (bins fit to the years shown)' : 'cases per 100,000 population';
   const swatchSize = 16, gap = 10, itemPad = 8;
-  ctx.font = '13px Arial'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.fillStyle = PALETTE.textMuted; ctx.font = 'bold 12px Arial';
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.fillText(unitNote, x, y + 6);
+  y += 20;
+  ctx.font = '13px Arial';
   let cx = x, cy = y + swatchSize/2;
   const items = IR_BINS.map(b=>({type:'swatch', color:b.color, label:b.label}))
     .concat([{type:'symbol', symbol:'▲', color:PALETTE.green, label:'Provincial Referral Hospital'},
@@ -2709,7 +2740,7 @@ function downloadMapImage(filename, titleText, footerText, selectedYears){
   const cols = selectedYears.length===1 ? 1 : Math.ceil(Math.sqrt(selectedYears.length));
   const rows = selectedYears.length===1 ? 1 : Math.ceil(selectedYears.length/cols);
   const titleHeight = 46;
-  const legendHeight = 70; // reserve two rows' worth; drawMapLegend wraps as needed within this
+  const legendHeight = 92; // unit line + two wrapped rows of swatches
   const footerHeight = footerText ? 30 : 0;
   const tmp = document.createElement('canvas');
   tmp.width = cellW*cols;
