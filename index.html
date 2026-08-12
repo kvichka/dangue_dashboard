@@ -156,7 +156,7 @@ footer{text-align:center;font-size:11px;color:var(--text-secondary);padding:18px
   header.top{padding:16px 18px;}
   header.top h1{font-size:21px;}
   .chart-box{height:300px !important;}
-  #ir-risk-map-frame{height:460px !important;}
+  #ir-risk-map-frame{height:460px;}
 }
 
 /* ================= RESPONSIVE — phone ================= */
@@ -184,7 +184,7 @@ footer{text-align:center;font-size:11px;color:var(--text-secondary);padding:18px
 
   /* Charts: fixed-height wrappers shrink so a chart fits on one screen */
   .chart-box{height:290px !important;}
-  #ir-risk-map-frame{height:380px !important;}
+  #ir-risk-map-frame{height:380px;}
   #map{height:340px;}
 
   /* Filters stack full-width — no cramped half-width selects */
@@ -2078,7 +2078,9 @@ function renderNational(){
         renderDeathsChart();
         renderAllFilteredCharts();
       }
-      (window._riskMapGetInstances ? window._riskMapGetInstances() : []).forEach(m=>m.invalidateSize());
+      const maps = window._riskMapGetInstances ? window._riskMapGetInstances() : [];
+      if(maps.length > 1 && window._renderRiskMap){ window._renderRiskMap(); }
+      else { maps.forEach(m=>m.invalidateSize()); }
     }, 250);
   });
 
@@ -2237,6 +2239,12 @@ function renderNational(){
     scrollWheelZoom: !MAP_IS_TOUCH,
     dragging: !MAP_IS_TOUCH,
     tap: true,
+    // Leaflet finishes a zoom animation on a transition-end callback. When a re-render tears the
+    // map down mid-animation (rapidly ticking year checkboxes does exactly that) that callback
+    // fires against destroyed panes and throws "_leaflet_pos of undefined". These maps only ever
+    // zoom via fitBounds, so the animation buys nothing — turning it off removes the whole class
+    // of error and renders faster on low-end devices.
+    zoomAnimation: false,
     attributionControl:false,
     zoomControl: MAP_IS_TOUCH,
     minZoom:5, maxZoom:16
@@ -2314,6 +2322,10 @@ function renderNational(){
   refreshMapLegend();
 
   let activeMaps = []; // Leaflet instances currently on screen — destroyed and rebuilt on every render
+  // Every render tears down the previous maps, but the deferred fitBounds/invalidateSize calls
+  // queued by that render still fire afterwards and blow up on the destroyed instance
+  // (_leaflet_pos of undefined). Ticking a token per render lets those stale callbacks bail out.
+  let riskMapRenderToken = 0;
   // Provinces small/thin enough on the map that an in-place label would be unreadable — these
   // get a numbered badge instead, with the actual values listed in a footnote below the map.
   const SMALL_PROVINCES = ['Pailin', 'Kandal', 'Phnom Penh', 'Preah Sihanouk', 'Kep'];
@@ -2406,7 +2418,8 @@ function renderNational(){
   function renderRiskMap(){
     const selectedYears = irMapYearDD.getSelected();
     const frame = document.getElementById('ir-risk-map-frame');
-    activeMaps.forEach(m=>m.remove());
+    const renderToken = ++riskMapRenderToken;
+    activeMaps.forEach(m=>{ try{ m.stop(); }catch(e){} m.remove(); });
     window._riskMapFootnote = '';
     activeMaps = [];
     frame.innerHTML = '';
@@ -2435,18 +2448,28 @@ function renderNational(){
       // on a phone — 25 of them overlap into an unreadable mess at that width — so the map
       // is a clean choropleth you tap for a value instead.
       const narrowMap = NARROW();
+      frame.style.height = (narrowMap ? 380 : 560) + 'px';
       const map = L.map(div, Object.assign({}, MAP_BASE_OPTS, {zoomSnap: narrowMap ? 0 : 1})).setView([12.6, 104.9], 7);
       const layer = drawChoropleth(map, String(selectedYears[0]), {labels: !narrowMap, hospitals:true});
       activeMaps.push(map);
       window._riskMapFootnote = map._smallProvinceFootnote || '';
-      requestAnimationFrame(()=>{ map.invalidateSize(); map.fitBounds(layer.getBounds(), {padding: narrowMap?[8,8]:[60,60]}); });
+      requestAnimationFrame(()=>{ if(renderToken!==riskMapRenderToken) return; map.invalidateSize(); map.fitBounds(layer.getBounds(), {padding: narrowMap?[8,8]:[60,60]}); });
     } else {
       // Multiple years: small-multiples grid inside the same frame — more years = smaller maps
       const n = selectedYears.length;
       const cols = NARROW() ? Math.min(2, n) : Math.ceil(Math.sqrt(n));
       const rows = Math.ceil(n / cols);
+      // The frame used to be a fixed 560px however many years were selected, so eight years meant
+      // eight postage stamps. Height is now derived from the cell width and Cambodia's own
+      // bounding-box aspect (~1.08 wide), so each small multiple stays roughly square and the
+      // card grows downward instead of shrinking the maps.
+      const GAP = 6, PAD = 12;
+      const frameW = frame.clientWidth || 900;
+      const cellW = (frameW - PAD - GAP*(cols-1)) / cols;
+      const cellH = Math.min(420, Math.max(150, cellW * 0.9));
+      frame.style.height = Math.round(rows*cellH + GAP*(rows-1) + PAD) + 'px';
       const grid = document.createElement('div');
-      grid.style.cssText = `display:grid;grid-template-columns:repeat(${cols},1fr);grid-template-rows:repeat(${rows},1fr);gap:6px;width:100%;height:100%;padding:6px;box-sizing:border-box;`;
+      grid.style.cssText = `display:grid;grid-template-columns:repeat(${cols},1fr);grid-template-rows:repeat(${rows},1fr);gap:${GAP}px;width:100%;height:100%;padding:${PAD/2}px;box-sizing:border-box;`;
       frame.appendChild(grid);
       selectedYears.forEach(y=>{
         const cell = document.createElement('div');
@@ -2458,10 +2481,10 @@ function renderNational(){
         mapDiv.style.cssText = 'width:100%;height:100%;';
         cell.appendChild(mapDiv); cell.appendChild(title);
         grid.appendChild(cell);
-        const map = L.map(mapDiv, Object.assign({}, MAP_BASE_OPTS, {zoomControl:false, zoomSnap: NARROW() ? 0 : 1})).setView([12.6, 104.9], 6);
+        const map = L.map(mapDiv, Object.assign({}, MAP_BASE_OPTS, {zoomControl:false, zoomSnap: 0})).setView([12.6, 104.9], 6);
         const layer = drawChoropleth(map, String(y), {labels:false, hospitals:n<=2});
         activeMaps.push(map);
-        requestAnimationFrame(()=>{ map.invalidateSize(); map.fitBounds(layer.getBounds(), {padding:[4,4]}); });
+        requestAnimationFrame(()=>{ if(renderToken!==riskMapRenderToken) return; map.invalidateSize(); map.fitBounds(layer.getBounds(), {padding:[6,6]}); });
       });
     }
 
