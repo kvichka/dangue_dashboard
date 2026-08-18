@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="color-scheme" content="light">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dengue Situation Dashboard — Cambodia / Battambang (Wolbachia Program)</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1"></script>
@@ -47,8 +46,7 @@
   --radius: 8px; --gap: 16px;
 }
 *{box-sizing:border-box;}
-html{-webkit-text-size-adjust:100%;}
-body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,'Noto Sans Khmer','Khmer OS',sans-serif;background:var(--bg-app);color:var(--text-primary);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased;overflow-x:hidden;}
+body{margin:0;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,'Noto Sans Khmer','Khmer OS',sans-serif;background:var(--bg-app);color:var(--text-primary);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased;}
 .mono, .kpi-value, .kpi-sub, .dl, .axl, .qa-comp-pct{font-feature-settings:'tnum' 1;font-variant-numeric:tabular-nums;}
 .wrap{max-width:1400px;margin:0 auto;padding:20px;}
 header.top{background:var(--bg-header);color:var(--text-on-dark);border-radius:var(--radius);padding:20px 24px;margin-bottom:var(--gap);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
@@ -102,16 +100,12 @@ header.top p{margin:0;font-size:13px;color:var(--text-on-dark);opacity:.8;}
 #province-chart-wrap-ir canvas{max-height:none;}
 #province-chart-wrap-cases canvas{max-height:none;}
 #deaths-chart-wrap canvas{max-height:none;}
-/* N3 was capped at 290px by the generic .card canvas rule while its wrapper was 360px, so 70px
-   of the card sat empty and every bar was squashed into the bottom third. */
-#severity-timeline-wrap canvas{max-height:none;}
 table{width:100%;border-collapse:collapse;font-size:13px;}
 th{text-align:left;padding:8px 10px;border-bottom:2px solid var(--border);color:var(--text-secondary);text-transform:uppercase;font-size:11px;letter-spacing:.04em;font-weight:500;cursor:pointer;user-select:none;white-space:nowrap;}
 th:hover{color:var(--text-primary);}
 td{padding:7px 10px;border-bottom:1px solid var(--border);}
 tr:hover td{background:var(--surface-alt);}
-.tbl-wrap{max-height:420px;overflow:auto;-webkit-overflow-scrolling:touch;}
-.scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.tbl-wrap{max-height:420px;overflow:auto;}
 .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;}
 .badge.df{background:var(--surface-alt);color:var(--accent);}
 .badge.dhf{background:var(--surface-alt);color:var(--accent2);}
@@ -124,24 +118,15 @@ tr:hover td{background:var(--surface-alt);}
 .prov-label-dark{color:var(--text-body);text-shadow:0 0 3px var(--surface),0 0 3px var(--surface),0 0 3px var(--surface),0 0 3px var(--surface);}
 .prov-label-light{color:var(--surface);text-shadow:0 0 3px var(--text-body),0 0 3px var(--text-body),0 0 3px var(--text-body),0 0 3px var(--text-body);}
 .legend-item{display:flex;align-items:center;gap:6px;}
-/* The heatmap legend (N9) builds its swatches as bare <i> tags with only a background colour.
-   Inline elements have no intrinsic box, so they were rendering as 1px slivers. */
-.legend-box span{display:inline-flex;align-items:center;gap:6px;}
-.legend-box i{display:inline-block;width:14px;height:14px;border-radius:3px;flex-shrink:0;}
 .dot{width:11px;height:11px;border-radius:50%;display:inline-block;}
 footer{text-align:center;font-size:11px;color:var(--text-secondary);padding:18px 0;}
 .filter-row{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
-.filter-row select{padding:6px 10px;border-radius:6px;border:1px solid var(--border);font-size:13px;background:var(--surface);max-width:100%;}
-/* Raised above the Leaflet map. Leaflet's own panes sit at z-index 400-700 and its controls
-   at 800-1000; the dropdown was at 50, so any panel opened over a map was painted underneath
-   the country polygons. .msdd-wrap gets an isolated stacking context so the panel clears the
-   map without also floating over the KPI tooltip (z-index 2000). */
-.msdd-wrap{position:relative;display:inline-block;z-index:1200;}
-.msdd-wrap.open-wrap{z-index:1300;}
-.msdd-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-size:13px;cursor:pointer;min-width:170px;text-align:left;color:var(--text-primary);max-width:100%;}
+.filter-row select{padding:6px 10px;border-radius:6px;border:1px solid var(--border);font-size:13px;background:var(--surface);}
+.msdd-wrap{position:relative;display:inline-block;}
+.msdd-btn{padding:6px 12px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-size:13px;cursor:pointer;min-width:170px;text-align:left;color:var(--text-primary);}
 .msdd-btn:hover{border-color:var(--accent);}
 .msdd-btn::after{content:'▾';float:right;color:var(--text-secondary);}
-.msdd-panel{display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 14px rgba(16,24,40,0.16);padding:8px;z-index:1201;max-height:240px;overflow-y:auto;min-width:170px;max-width:calc(100vw - 32px);}
+.msdd-panel{display:none;position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 1px 2px rgba(16,24,40,0.05);padding:8px;z-index:50;max-height:240px;overflow-y:auto;min-width:170px;}
 .msdd-panel.open{display:block;}
 .msdd-item{display:flex;align-items:center;gap:7px;padding:5px 8px;font-size:13px;cursor:pointer;border-radius:5px;}
 .msdd-item:hover{background:var(--surface-alt);}
@@ -152,112 +137,6 @@ footer{text-align:center;font-size:11px;color:var(--text-secondary);padding:18px
 .subtab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
 .subview{display:none;}
 .subview.active{display:block;animation:fade .2s;}
-.mobile-only{display:none;}
-/* Marks the few places that genuinely cannot follow the province filter, so a national number
-   sitting under a province selection reads as deliberate rather than stale. */
-.d-nat,.scope-badge{display:inline-block;background:var(--surface-alt);color:var(--text-secondary);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;margin-right:6px;vertical-align:1px;}
-/* Cross-filter status bar: with one selection driving twelve charts, the page has to say out
-   loud what is currently applied — otherwise a stale province filter silently misreads every
-   number below it. */
-.chipbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:var(--gap);}
-.chipbar .lbl{font-size:11px;color:var(--text-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
-.chip{display:inline-flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;color:var(--text-secondary);}
-.chip b{font-weight:700;color:var(--text-primary);}
-.chip.on{border-color:var(--accent2);background:var(--surface);}
-.chip .x{cursor:pointer;font-weight:700;color:var(--text-secondary);line-height:1;padding:0 2px;}
-.chip .x:hover{color:var(--danger);}
-.chip-clear{background:var(--surface-alt);color:var(--text-primary);border:1px solid var(--border);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;}
-.chip-clear:hover{background:var(--border);}
-tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
-#tbl-multiyear tbody tr,#tbl-province tbody tr{cursor:pointer;}
-
-/* ================= RESPONSIVE — tablet ================= */
-@media(max-width:900px){
-  .wrap{padding:14px;}
-  header.top{padding:16px 18px;}
-  header.top h1{font-size:21px;}
-  .chart-box{height:300px !important;}
-  #ir-risk-map-frame{height:460px;}
-}
-
-/* ================= RESPONSIVE — phone ================= */
-@media(max-width:640px){
-  :root{--gap:12px;}
-  .wrap{padding:10px;}
-  header.top{padding:14px 14px;border-radius:var(--radius);}
-  header.top h1{font-size:19px;line-height:1.25;}
-  header.top p{font-size:12px;}
-  .mobile-only{display:block;}
-
-  /* KPIs: two per row instead of one very long column */
-  .kpi-row{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:10px;}
-  .kpi-card{padding:12px;cursor:pointer;}
-  .kpi-label{font-size:11px;margin-bottom:6px;}
-  .kpi-value{font-size:23px;}
-  .kpi-unit{font-size:11px;}
-  .kpi-sub{font-size:10px;}
-  .kpi-tooltip{max-width:calc(100vw - 24px);font-size:12px;}
-
-  .card{padding:12px;}
-  .card h3{font-size:16px;}
-  .card .note{font-size:11px;}
-  .caveat{font-size:11px;padding:10px 12px;}
-
-  /* Charts: fixed-height wrappers shrink so a chart fits on one screen */
-  .chart-box{height:290px !important;}
-  #severity-timeline-wrap{height:360px !important;}   /* it scrolls sideways, so give it depth */
-  #ir-risk-map-frame{height:380px;}
-  #map{height:340px;}
-
-  /* Filters stack full-width — no cramped half-width selects */
-  .filter-row{flex-direction:column;align-items:stretch;gap:8px;margin-bottom:10px;}
-  .filter-row > label{font-weight:600;color:var(--text-primary);margin-bottom:-4px;}
-  .filter-row select,.filter-row .msdd-wrap,.filter-row .msdd-btn{width:100%;min-width:0;}
-  .filter-row select{padding:10px;font-size:14px;}
-  .filter-row > span[style*="width:14px"]{display:none;}
-  .msdd-btn{padding:10px 12px;font-size:14px;}
-  .msdd-panel{min-width:100%;max-height:50vh;}
-  .msdd-item{padding:9px 8px;font-size:14px;}
-
-  .seg-toggle{display:flex;width:100%;}
-  .seg-btn{flex:1;padding:11px 6px;font-size:12px;text-align:center;}
-
-  .subtabs{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  .subtab-btn{padding:10px 12px;white-space:nowrap;}
-
-  .dl-btn{padding:8px 12px;font-size:12px;}
-  .dl-btn-group{flex-wrap:wrap;}
-  .card-title-row{flex-direction:column;align-items:stretch;}
-
-  /* Tables scroll sideways instead of squashing 9 year-columns into 320px */
-  table{font-size:12px;}
-  th,td{padding:7px 8px;}
-  .tbl-wrap{max-height:none;overflow-x:auto;overflow-y:visible;}
-  #tbl-multiyear{min-width:860px;}
-  #tbl-province{min-width:700px;}
-  /* Province name stays pinned while the year columns scroll past it — without this you
-     lose track of which row you are reading two swipes in. */
-  #tbl-multiyear th:first-child,#tbl-multiyear td:first-child,
-  #tbl-province th:first-child,#tbl-province td:first-child{
-    position:sticky;left:0;z-index:2;background:var(--surface);
-    box-shadow:1px 0 0 var(--border);
-  }
-  #tbl-multiyear tbody tr:last-child td:first-child,
-  #tbl-province tbody tr:last-child td:first-child{background:var(--surface-alt);}
-
-  .legend-box{padding:10px 12px;gap:10px;}
-  #insight-list{padding-left:18px;font-size:12px;}
-}
-/* The shared filter is 5 controls deep — as a plain column it pushes every number off
-   the first screen, so on a phone each label sits beside its own control instead. */
-@media(max-width:640px){
-  #global-filter-row{display:grid;grid-template-columns:max-content 1fr;gap:8px 10px;align-items:center;}
-  #global-filter-row > label{margin-bottom:0;white-space:nowrap;}
-}
-@media(max-width:359px){
-  .kpi-row{grid-template-columns:1fr !important;}
-  .kpi-value{font-size:26px;}
-}
 </style>
 </head>
 <body>
@@ -272,8 +151,8 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
   <!-- NATIONAL VIEW -->
   <div class="view active" id="view-national">
     <div class="card" style="margin-bottom:var(--gap);background:var(--surface-alt);border:1px solid var(--grid);">
-      <h3 style="display:flex;align-items:center;gap:8px;">Filter — drives every chart on this page</h3>
-      <div class="filter-row" id="global-filter-row" style="flex-wrap:wrap;">
+      <h3 style="display:flex;align-items:center;gap:8px;">Filter — applies to the KPI cards below and the Severity/Yearly Trend charts (Trends tab)</h3>
+      <div class="filter-row" style="flex-wrap:wrap;">
         <label>Province:</label>
         <select id="global-province-select"><option value="__ALL__">All Provinces</option></select>
         <span style="width:14px;"></span>
@@ -287,10 +166,8 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
         <label>Month</label>
         <select id="global-to-month"></select>
       </div>
-      <div class="note" style="margin-top:4px;">Province, date range and metric are one shared selection — set them here, or click a province on any chart, map, heatmap row or table row, and the whole page follows. Each chart honours the range at its own resolution: month charts (N4, L2) clip to the month window, year charts (N5, N6, N9, N11, N12) switch to the years it covers. Province-comparison charts highlight the selection rather than filtering to it, so you keep the ranking context. <b>Two exceptions:</b> N1 Outbreak Signal stays national by construction (its threshold is built from the national 2018-2025 baseline), and N7/N8 age charts are national only — the source carries no age split by province.</div>
+      <div class="note" style="margin-top:4px;">"National Case & Death Trend — by Month" has its own Province/Year controls (multi-year comparison view). This bar doesn't apply to the Epidemic Threshold chart (its month-of-year corridor design doesn't fit a continuous date range), or to province-comparison charts elsewhere on this tab (they show all provinces at once by design).</div>
     </div>
-    <div id="active-filter-bar" class="chipbar"></div>
-    <div class="note mobile-only" style="margin:-4px 0 10px;color:var(--text-secondary);">Tap any KPI card to see how it was calculated. Wide tables and the month heatmap scroll sideways.</div>
     <div class="kpi-row" id="top-kpi-row" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr));">
       <div class="kpi-card" id="kpi-cases" style="cursor:default;">
         <div class="kpi-label" id="kpi-cases-label">Cases — National YTD</div>
@@ -351,14 +228,13 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
           </div>
         </div>
         <div class="note" id="n2-metric-note">Full calendar-year totals 2018-2025 (historical line-list) · 2026 is year-to-date, not a full year — read the bar height accordingly. Bars = cases (left axis), line = deaths (right axis, drawn in front).</div>
-        <div class="chart-box" style="height:320px;"><canvas id="chart-trend-yearly"></canvas></div>
+        <div style="height:320px;"><canvas id="chart-trend-yearly"></canvas></div>
         <div class="note chart-note" id="trend-yearly-note" style="margin-top:8px;"></div>
       </div>
       <div class="card" style="margin-bottom:var(--gap);">
         <h3><span class="vno">N3</span>Monthly Case Composition by Severity — DF, DHF, DSS and Deaths</h3>
-        <div class="note">Stacked bars = DF / DHF / DSS / Deaths (DHFD) case mix by month. Dotted red line = deaths that month on the right axis, labelled where a death occurred — as a stack segment they are far too small to see. Year labels are centered under each year's group of monthly bars. 2026 months (severity mix not split in the source) show as a single gray "Total cases" bar.</div>
-        <div class="note mobile-only" style="margin-bottom:6px;">Swipe the chart sideways to reach later months, the DSS % axis and the legend.</div>
-        <div class="scroll-x"><div id="severity-timeline-wrap" class="chart-box" style="height:470px;position:relative;"><canvas id="chart-severity-timeline"></canvas></div></div>
+        <div class="note">Stacked bars = DF / DHF / DSS / Deaths (DHFD) case mix by month. Dashed line = DSS share of that month, right axis. Year labels are centered under each year's group of monthly bars. 2026 months (severity mix not split in the source) show as a single gray "Total cases" bar.</div>
+        <div id="severity-timeline-wrap" style="height:360px;position:relative;"><canvas id="chart-severity-timeline"></canvas></div>
         <div class="note chart-note" id="severity-2026-note" style="margin-top:8px;"></div>
       </div>
       <div class="card" style="margin-bottom:var(--gap);">
@@ -376,7 +252,7 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
           <label>Compare years:</label>
           <div id="trend-year-dropdown"></div>
         </div>
-        <div class="chart-box" style="height:320px;"><canvas id="chart-trend"></canvas></div>
+        <div style="height:320px;"><canvas id="chart-trend"></canvas></div>
         <div class="note chart-note" id="trend-2026-note" style="margin-top:8px;"></div>
       </div>
       <div class="card" style="margin-bottom:var(--gap);">
@@ -386,13 +262,13 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
           <label>Compare against:</label>
           <div id="cumul-year-dropdown"></div>
         </div>
-        <div class="chart-box" style="height:320px;"><canvas id="chart-cumulative"></canvas></div>
+        <div style="height:320px;"><canvas id="chart-cumulative"></canvas></div>
         <div class="note chart-note" id="cumulative-note" style="margin-top:8px;"></div>
       </div>
       <div class="card" style="margin-bottom:var(--gap);">
         <h3><span class="vno">N1</span>Outbreak Signal — 2026 Monthly Cases Against the 2018–2025 Baseline</h3>
         <div class="note" id="epi-method-desc">Counts, not rates — the threshold is defined on counts. Baseline is 8 prior years (2018-2025), built only from months that actually reported, so each month rests on between 7 and 8 years.</div>
-        <div class="chart-box" style="height:340px;position:relative;"><canvas id="chart-epidemic-channel"></canvas></div>
+        <div style="height:340px;position:relative;"><canvas id="chart-epidemic-channel"></canvas></div>
         <div class="legend-box" id="epi-legend" style="margin-top:6px;"></div>
         <div class="note chart-note" id="epidemic-channel-note" style="margin-top:8px;"></div>
       </div>
@@ -416,11 +292,11 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
           </div>
         </div>
         <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;">
-          <div style="flex:1;min-width:min(340px,100%);">
+          <div style="flex:1;min-width:340px;">
             <div class="note" style="font-weight:700;color:var(--text-primary);margin-bottom:4px;">Incidence rate per 100,000</div>
             <div id="province-chart-wrap-ir" style="height:900px;"><canvas id="chart-province-ir"></canvas></div>
           </div>
-          <div style="flex:1;min-width:min(340px,100%);">
+          <div style="flex:1;min-width:340px;">
             <div class="note" style="font-weight:700;color:var(--text-primary);margin-bottom:4px;">Cases</div>
             <div id="province-chart-wrap-cases" style="height:900px;"><canvas id="chart-province-cases"></canvas></div>
           </div>
@@ -452,12 +328,12 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
       <div class="grid2">
         <div class="card">
           <h3><span class="vno">N7</span>Cases by Age Group</h3>
-          <div class="note"><span class="scope-badge">National only</span>2025 vs 2026. This chart does not follow the province filter — the source file carries age bands for the country as a whole, with no age split by province.</div>
-          <div class="chart-box" style="height:320px;"><canvas id="chart-age"></canvas></div>
+          <div class="note">National totals, 2025 vs 2026</div>
+          <div style="height:320px;"><canvas id="chart-age"></canvas></div>
         </div>
         <div class="card">
           <h3><span class="vno">N8</span>2026 Severity by Age Group</h3>
-          <div class="note"><span class="scope-badge">National only</span>DF / DHF / DSS composition. Same limitation as N7 — no age split by province in the source.</div>
+          <div class="note">DF / DHF / DSS composition</div>
           <canvas id="chart-severity-age"></canvas>
         </div>
       </div>
@@ -472,8 +348,7 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
           <label>Year:</label>
           <select id="v6-year-select"></select>
         </div>
-        <div class="note mobile-only" style="margin-bottom:6px;">Swipe the heatmap sideways to reach later months.</div>
-        <div class="scroll-x"><svg id="v6-heatmap" width="900" height="720"></svg></div>
+        <div style="overflow-x:auto;"><svg id="v6-heatmap" width="900" height="720"></svg></div>
         <div class="legend-box" id="v6-legend" style="margin-top:8px;"></div>
         <div class="note" id="v6-caveat" style="margin-top:4px;">August to December 2026 are blank because they have not been reported yet — not because there were no cases.</div>
       </div>
@@ -490,13 +365,9 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
           </div>
           <label>Year(s):</label>
           <div id="ir-map-year-dropdown"></div>
-          <span style="width:14px;"></span>
-          <label>Highlight:</label>
-          <div id="ir-map-province-dropdown"></div>
-          <span style="font-size:11.5px;color:var(--text-secondary);">(check more than one year to compare side-by-side — maps shrink to fit as you add years)</span>
+          <span style="font-size:11.5px;color:var(--text-secondary);">(check more than one to compare side-by-side — maps shrink to fit as you add years)</span>
         </div>
         <div id="ir-risk-map-frame" style="height:560px;border-radius:var(--radius);margin-top:8px;background:var(--surface-alt);position:relative;"></div>
-        <div class="note mobile-only" style="margin-top:6px;">Tap a province for its value. The map is pinch-to-zoom only on a phone — a one-finger swipe scrolls the page instead of dragging the map.</div>
         <div class="legend-box" id="ir-map-legend"></div>
         <div class="note chart-note" id="ir-map-note" style="margin-top:8px;"></div>
       </div>
@@ -509,13 +380,11 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
           <label style="display:flex;align-items:center;gap:4px;font-weight:400;"><input type="radio" name="myr-view-mode" value="whole" checked> Whole calendar year (2026 = YTD)</label>
           <label style="display:flex;align-items:center;gap:4px;font-weight:400;"><input type="radio" name="myr-view-mode" value="ytd"> Same period every year (Jan-<span id="myr-ytd-month-label"></span>)</label>
         </div>
-        <div class="note mobile-only" style="margin-bottom:6px;">Swipe the table sideways to see all years.</div>
         <div class="tbl-wrap" style="max-height:520px;"><table id="tbl-multiyear"><thead><tr id="tbl-multiyear-head"></tr></thead><tbody></tbody></table></div>
       </div>
       <div class="card">
         <h3><span class="vno">N13</span>Province Detail — 2026 YTD vs 2025 YTD</h3>
         <div class="note">Click headers to sort. Total row at the bottom (CFR and IR recalculated from totals, not averaged). IR = Incidence Rate per 100,000 population, using real year-by-year data for all 25 provinces from NIS's official Population Projection 2020-2033 report (same figures as the Risk Map above). Follows the Province selected in the filter bar above (Overview tab).</div>
-        <div class="note mobile-only" style="margin-bottom:6px;">Swipe the table sideways to see every column.</div>
         <div class="tbl-wrap"><table id="tbl-province"><thead><tr>
           <th data-k="province">Province</th><th data-k="cases2026">Cases 2026</th><th data-k="cases2025">Cases 2025</th>
           <th data-k="ir2026">IR 2026</th><th data-k="ir2025">IR 2025</th>
@@ -526,7 +395,7 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
 
     <div class="card" id="insight-panel" style="margin-bottom:var(--gap);border-left:4px solid var(--accent);">
       <h3 style="display:flex;align-items:center;gap:8px;"><span class="vno">INSIGHT</span>💡 What the Data Says Right Now</h3>
-      <div class="note">Computed live from the current selection — pick a province anywhere on the page and these rewrite themselves around it (rank, its own growth, its own outbreak threshold). Bullets marked <span class="d-nat">National</span> stay national because the source has no province-level age data.</div>
+      <div class="note">Computed live from the current filter selection — these change when you change the filter above, not fixed text.</div>
       <ul id="insight-list" style="margin:10px 0 0; padding-left:20px; line-height:1.7;"></ul>
     </div>
   </div>
@@ -550,10 +419,6 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
 
 
 const nat = BUNDLE.national;
-// ---- Responsive helpers: one place that decides "are we on a small screen" and "can this
-// device hover". Every layout decision below reads these rather than hard-coding a pixel width.
-const NARROW = () => window.innerWidth < 700;                       // phone-ish viewport
-const TOUCH_ONLY = window.matchMedia('(hover:none)').matches;       // no mouse — tap instead of hover
 // ---- Single source of truth for color: read every value from the :root CSS
 // variables defined in <style>. No hex literal is ever written below this line —
 // if a new color is ever needed, add it to :root, not here.
@@ -578,17 +443,6 @@ function hexToRgba(hex, alpha){
   const full = h.length===3 ? h.split('').map(c=>c+c).join('') : h;
   const r = parseInt(full.substring(0,2),16), g = parseInt(full.substring(2,4),16), b = parseInt(full.substring(4,6),16);
   return `rgba(${r},${g},${b},${alpha})`;
-}
-// Keeps a floating popup fully on screen: never off the right edge, never off the left.
-function placeFloatingTip(tipEl, anchorClientX, anchorPageY){
-  tipEl.style.display = 'block';
-  const vw = document.documentElement.clientWidth;
-  const w = tipEl.offsetWidth;
-  let left = anchorClientX;
-  if(left + w > vw - 8) left = vw - w - 8;
-  if(left < 8) left = 8;
-  tipEl.style.left = (left + window.scrollX) + 'px';
-  tipEl.style.top = anchorPageY + 'px';
 }
 // Shared diagonal-hatch texture for "partial / different-in-kind" data (2026 YTD bars, or months
 // where a breakdown genuinely isn't available) — a pattern, not just a flat color, so it can't be
@@ -632,9 +486,6 @@ if(window.Chart){
   Chart.defaults.plugins.tooltip.backgroundColor = PALETTE.textBody;
   Chart.defaults.plugins.tooltip.padding = 10;
   Chart.defaults.plugins.tooltip.cornerRadius = 6;
-  // Touch screens have no hover, so a tap has to be enough to open a tooltip and it has to be
-  // forgiving about exactly where the finger landed.
-  if(TOUCH_ONLY){ Chart.defaults.interaction.intersect = false; }
 }
 function fmt(n){ return n==null? '-' : n.toLocaleString(); }
 
@@ -654,32 +505,16 @@ function buildYearDropdown(containerId, years, defaultSelectedYears, onChange){
     panel.appendChild(item);
   });
   function getSelected(){ return Array.from(panel.querySelectorAll('input:checked')).map(i=>parseInt(i.value)).sort((a,b)=>a-b); }
-  // Lets the shared filter drive this dropdown. silent=true updates the checkboxes and the button
-  // label without firing onChange, so the caller can batch one re-render instead of N.
-  function setSelected(nextYears, silent){
-    const want = new Set(nextYears.map(Number));
-    panel.querySelectorAll('input[type=checkbox]').forEach(cb=>{ cb.checked = want.has(Number(cb.value)); });
-    updateLabel();
-    if(!silent) onChange(getSelected());
-  }
   function updateLabel(){
     const sel = getSelected();
     btn.textContent = sel.length===0 ? 'No years selected' : (sel.length===years.length ? 'All years' : sel.join(', '));
   }
-  btn.addEventListener('click', (e)=>{
-    e.stopPropagation();
-    // Close any other open dropdown first — two open panels can overlap each other.
-    document.querySelectorAll('.msdd-panel.open').forEach(pp=>{ if(pp!==panel){ pp.classList.remove('open'); pp.closest('.msdd-wrap').classList.remove('open-wrap'); } });
-    const isOpen = panel.classList.toggle('open');
-    wrap.classList.toggle('open-wrap', isOpen);
-  });
-  document.addEventListener('click', (e)=>{
-    if(!wrap.contains(e.target)){ panel.classList.remove('open'); wrap.classList.remove('open-wrap'); }
-  });
+  btn.addEventListener('click', (e)=>{ e.stopPropagation(); panel.classList.toggle('open'); });
+  document.addEventListener('click', (e)=>{ if(!wrap.contains(e.target)) panel.classList.remove('open'); });
   wrap.appendChild(btn); wrap.appendChild(panel);
   container.appendChild(wrap);
   updateLabel();
-  return { getSelected, setSelected };
+  return { getSelected };
 }
 
 // Same look as buildYearDropdown, but for arbitrary string values (province names, etc.) rather
@@ -720,16 +555,8 @@ function buildMultiSelectDropdown(containerId, values, defaultSelectedValues, on
     const sel = getSelected();
     btn.textContent = sel.length===0 ? 'None selected' : (sel.length===values.length ? (allLabel || 'All') : `${sel.length} selected`);
   }
-  btn.addEventListener('click', (e)=>{
-    e.stopPropagation();
-    // Close any other open dropdown first — two open panels can overlap each other.
-    document.querySelectorAll('.msdd-panel.open').forEach(pp=>{ if(pp!==panel){ pp.classList.remove('open'); pp.closest('.msdd-wrap').classList.remove('open-wrap'); } });
-    const isOpen = panel.classList.toggle('open');
-    wrap.classList.toggle('open-wrap', isOpen);
-  });
-  document.addEventListener('click', (e)=>{
-    if(!wrap.contains(e.target)){ panel.classList.remove('open'); wrap.classList.remove('open-wrap'); }
-  });
+  btn.addEventListener('click', (e)=>{ e.stopPropagation(); panel.classList.toggle('open'); });
+  document.addEventListener('click', (e)=>{ if(!wrap.contains(e.target)) panel.classList.remove('open'); });
   wrap.appendChild(btn); wrap.appendChild(panel);
   container.appendChild(wrap);
   updateLabel();
@@ -757,32 +584,17 @@ function buildSingleSelectDropdown(containerId, options, defaultValue, onChange)
         current = opt.value;
         updateLabel(); render();
         panel.classList.remove('open');
-        wrap.classList.remove('open-wrap');
         onChange(current);
       });
       panel.appendChild(item);
     });
   }
-  btn.addEventListener('click', (e)=>{
-    e.stopPropagation();
-    // Close any other open dropdown first — two open panels can overlap each other.
-    document.querySelectorAll('.msdd-panel.open').forEach(pp=>{ if(pp!==panel){ pp.classList.remove('open'); pp.closest('.msdd-wrap').classList.remove('open-wrap'); } });
-    const isOpen = panel.classList.toggle('open');
-    wrap.classList.toggle('open-wrap', isOpen);
-  });
-  document.addEventListener('click', (e)=>{
-    if(!wrap.contains(e.target)){ panel.classList.remove('open'); wrap.classList.remove('open-wrap'); }
-  });
+  btn.addEventListener('click', (e)=>{ e.stopPropagation(); panel.classList.toggle('open'); });
+  document.addEventListener('click', (e)=>{ if(!wrap.contains(e.target)) panel.classList.remove('open'); });
   wrap.appendChild(btn); wrap.appendChild(panel);
   container.appendChild(wrap);
   render(); updateLabel();
-  // silent=true so the shared filter can push a value in without echoing back a change event
-  function setValue(v, silent){
-    if(v === current) return;
-    current = v; updateLabel(); render();
-    if(!silent) onChange(current);
-  }
-  return { getValue: ()=>current, setValue };
+  return { getValue: ()=>current };
 }
 
 
@@ -819,37 +631,10 @@ function renderNational(){
   const monthly = BUNDLE.monthly;
   const tc2026 = BUNDLE.total_cases_2026;
   const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-  // ============================================================================================
-  // SHARED FILTER STATE — province, date range and metric are one selection, not three per-card
-  // ones. Every chart reads from here; changing it anywhere re-renders everything that can
-  // honour it. Default metric is IR: on a choropleth, raw case counts just redraw the population
-  // map (big provinces always dark), so incidence rate is the honest landing view.
-  // ============================================================================================
-  let sharedMetric = 'ir';
-  // "has the user narrowed the DATE RANGE" — not "has any filter been used". Province selection
-  // deliberately leaves this alone.
-  let globalFilterTouched = false;
-  const METRIC_TOGGLES = ['#n2-metric-toggle', '#n4-metric-toggle', '#ir-map-metric-toggle'];
-  function syncMetricToggleUI(){
-    METRIC_TOGGLES.forEach(sel=>{
-      document.querySelectorAll(sel + ' .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.metric === sharedMetric));
-    });
-  }
   const histYears = [2018,2019,2020,2021,2022,2023,2024,2025,2026];
 
   function abbrevFor(fullProvName){
     return Object.keys(myr.name_map).find(k=>myr.name_map[k]===fullProvName);
-  }
-  // N5/N6 label their bars with the short codes from nat.provinces ("Kg.Chhnang", "PreahVihear")
-  // while the shared filter speaks full names ("Kampong Chhnang", "Preah Vihear"). Every
-  // comparison and every click has to cross that boundary explicitly — feeding a short code
-  // straight into the province <select> just blanked it, which is why most bars did nothing.
-  function fullOf(abbrev){ return myr.name_map[abbrev] || abbrev; }
-
-  function selectedAbbrevOrNull(){
-    const full = gProvSelect.value;
-    return (!full || full === '__ALL__') ? null : (abbrevFor(full) || full);
   }
 
   // ---- Shared global filter: Province + From Year/Month + To Year/Month ----
@@ -904,9 +689,6 @@ function renderNational(){
     const full = h.length===3 ? h.split('').map(c=>c+c).join('') : h;
     return [parseInt(full.substring(0,2),16), parseInt(full.substring(2,4),16), parseInt(full.substring(4,6),16)];
   }
-  // Non-selected bars fade rather than disappear — the ranking only means something with the
-  // other 24 provinces still on screen.
-  function muteRgb(rgb){ return rgb.replace('rgb(', 'rgba(').replace(')', ',0.22)'); }
   function irGradientColor(value, minV, maxV){
     const t = maxV>minV ? (value-minV)/(maxV-minV) : 1;
     const stops = PALETTE.ramp.map((hex,i)=>({t: i/(PALETTE.ramp.length-1), c: hexToRgbTriple(hex)}));
@@ -956,28 +738,21 @@ function renderNational(){
     // Dark-to-light gradient keyed to this panel's own metric value range.
     const allValues = rows.flatMap(r=>years.map(y=> metric==='ir' ? r.byYear[y].ir : r.byYear[y].cases));
     const valMinMax = { min: Math.min(...allValues), max: Math.max(...allValues) };
-    const selProv = selectedAbbrevOrNull();   // rows[].province is a short code
     const datasets = years.map(y=>({
       label: metric==='ir' ? `IR ${y}` : `Cases ${y}`,
       data: rows.map(r=> metric==='ir' ? r.byYear[y].ir : r.byYear[y].cases),
-      backgroundColor: rows.map(r=>{
-        const c = irGradientColor(metric==='ir' ? r.byYear[y].ir : r.byYear[y].cases, valMinMax.min, valMinMax.max);
-        return (selProv && r.province !== selProv) ? muteRgb(c) : c;
-      }),
-      borderColor: rows.map(r=> r.province===selProv ? PALETTE.textBody : 'transparent'),
-      borderWidth: rows.map(r=> r.province===selProv ? 1.5 : 0),
+      backgroundColor: rows.map(r=> irGradientColor(metric==='ir' ? r.byYear[y].ir : r.byYear[y].cases, valMinMax.min, valMinMax.max)),
       barPercentage: years.length>1 ? 0.72 : 0.6, categoryPercentage:0.8
     }));
 
     // Value label at the end of each bar, light-weight font (not bold) so it reads as data,
     // not as another heading competing with the axis.
-    const narrow = NARROW();
     const barValueLabelPlugin = {
       id: 'barValueLabel-'+suffix,
       afterDatasetsDraw(c){
         const ctx = c.ctx;
         ctx.save();
-        ctx.font = (narrow ? '400 9px Arial' : '400 10.5px Arial');
+        ctx.font = '400 10.5px Arial';
         ctx.fillStyle = PALETTE.textMuted;
         ctx.textBaseline = 'middle';
         c.data.datasets.forEach((ds, di)=>{
@@ -999,15 +774,10 @@ function renderNational(){
       options:{
         indexAxis: 'y',
         responsive:true, maintainAspectRatio:false,
-        // Reserve room on the right for the bar-end value labels, so the longest bar's number
-        // isn't clipped off the canvas — matters most on a narrow phone canvas.
-        layout:{ padding:{ right: narrow ? 38 : 52 } },
         plugins:{legend: years.length>1 ? {position:'bottom'} : {display:false}},
-        onClick:(evt, els)=>{ if(els.length) setSharedProvince(fullOf(rows[els[0].index].province)); },
         scales:{
           x:{ beginAtZero:true, title:{display:true, text: metric==='ir' ? 'IR per 100,000' : 'Cases'} },
-          y:{ ticks:{autoSkip:false, font:{size: narrow ? 9.5 : 11, weight: rows.map(r=>r.province===selProv?'700':'400')},
-                     color: rows.map(r=>r.province===selProv?PALETTE.turquoise:PALETTE.textMuted)} }
+          y:{ ticks:{autoSkip:false} }
         }
       },
       plugins: [barValueLabelPlugin]
@@ -1032,7 +802,7 @@ function renderNational(){
     const topIR = [...rows].sort((a,b)=>b.byYear[primaryYear].ir-a.byYear[primaryYear].ir)[0];
     const topCases = [...rows].sort((a,b)=>b.byYear[primaryYear].cases-a.byYear[primaryYear].cases)[0];
     const yearsLabel = years.length>1 ? `${primaryYear} vs ${years.slice(1).join(', ')}` : String(primaryYear);
-    noteEl.textContent = `${yearsLabel}: ${rows.length} of 25 provinces shown. National IR: ${fmt(nationalIR)} per 100,000. Highest IR: ${fullOf(topIR.province)} (${fmt(topIR.byYear[primaryYear].ir)} per 100,000). Highest cases: ${fullOf(topCases.province)} (${fmt(topCases.byYear[primaryYear].cases)}).`;
+    noteEl.textContent = `${yearsLabel}: ${rows.length} of 25 provinces shown. National IR: ${fmt(nationalIR)} per 100,000. Highest IR: ${topIR.province} (${fmt(topIR.byYear[primaryYear].ir)} per 100,000). Highest cases: ${topCases.province} (${fmt(topCases.byYear[primaryYear].cases)}).`;
   }
   document.querySelectorAll('#province-chart-sort-toggle .seg-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -1069,7 +839,6 @@ function renderNational(){
     const zeroNoteEl = document.getElementById('deaths-chart-zero-note');
     const suppressedNoteEl = document.getElementById('deaths-chart-suppressed-note');
     const titleEl = document.getElementById('deaths-chart-title');
-    const narrow = NARROW();
     if(years.length === 0){
       if(deathsChart){ deathsChart.destroy(); deathsChart = null; }
       deathsCanvas.parentElement.style.height = '80px';
@@ -1114,16 +883,12 @@ function renderNational(){
 
     // Dark-to-light gradient keyed to this chart's own metric value range — same treatment as
     // the Province Ranking (N5) bars, so relative-ranking shading reads consistently everywhere.
-    const selectedProvForBars = selectedAbbrevOrNull();
     const allValues = ranked.flatMap(r=>years.map(y=> r.byYear[y][metricKey] || 0));
     const valMinMax = { min: Math.min(...allValues), max: Math.max(...allValues) };
     const datasets = years.map(y=>({
       label: `${metricLabel} ${y}`,
       data: ranked.map(r=>r.byYear[y][metricKey]),
-      backgroundColor: ranked.map(r=>{
-        const c = irGradientColor(r.byYear[y][metricKey] || 0, valMinMax.min, valMinMax.max);
-        return (selectedProvForBars && r.province !== selectedProvForBars) ? muteRgb(c) : c;
-      }),
+      backgroundColor: ranked.map(r=> irGradientColor(r.byYear[y][metricKey] || 0, valMinMax.min, valMinMax.max)),
       barPercentage: years.length>1 ? 0.72 : 0.6, categoryPercentage:0.8
     }));
 
@@ -1136,7 +901,7 @@ function renderNational(){
 
     // Selected province (from the global filter) gets a bold label + shaded row, matching the
     // reference design's "click a row to filter" highlight — we only support one at a time here.
-    const selectedProv = selectedAbbrevOrNull();
+    const selectedProv = gProvSelect.value !== '__ALL__' ? gProvSelect.value : null;
     const rowHighlightPlugin = {
       id: 'rowHighlight-'+Math.random().toString(36).slice(2),
       beforeDatasetsDraw(chart){
@@ -1155,7 +920,6 @@ function renderNational(){
     };
     // Bar-end value labels — bold primary value, grey secondary context. Only drawn for the
     // primary year's bars when comparing multiple years, to avoid a wall of overlapping text.
-    // On a phone the secondary context is dropped: there simply isn't room for it beside the bar.
     const barLabelPlugin = {
       id: 'barLabels-'+Math.random().toString(36).slice(2),
       afterDatasetsDraw(chart){
@@ -1169,19 +933,17 @@ function renderNational(){
           if(!bar) return;
           const st = r.byYear[primaryYear];
           const primary = metric==='count' ? fmt(st.deaths) : metric==='mortality' ? String(st.mortality) : st.cfr+'%';
-          const secondary = narrow ? '' : (metric==='count' ? ` of ${fmt(st.cases)} cases`
+          const secondary = metric==='count' ? ` of ${fmt(st.cases)} cases`
             : metric==='mortality' ? ` per 100,000 · ${fmt(st.deaths)}d`
-            : ` · ${fmt(st.deaths)}d`);
+            : ` · ${fmt(st.deaths)}d`;
           let x = bar.x + 6;
           ctx.font = '700 9.2px Arial';
           ctx.fillStyle = PALETTE.textBody;
           ctx.fillText(primary, x, bar.y);
-          if(secondary){
-            x += ctx.measureText(primary).width;
-            ctx.font = '400 9.2px Arial';
-            ctx.fillStyle = PALETTE.textMuted;
-            ctx.fillText(secondary, x, bar.y);
-          }
+          x += ctx.measureText(primary).width;
+          ctx.font = '400 9.2px Arial';
+          ctx.fillStyle = PALETTE.textMuted;
+          ctx.fillText(secondary, x, bar.y);
         });
         ctx.restore();
       }
@@ -1200,16 +962,15 @@ function renderNational(){
       const st = r.byYear[year];
       const yearTotalDeaths = ranked.reduce((s,p)=>s+p.byYear[year].deaths,0);
       const pctOfScope = yearTotalDeaths ? (st.deaths/yearTotalDeaths*100).toFixed(1) : '0.0';
-      const abbrev = r.province;              // rows are keyed by short code
-      const fullTitle = fullOf(r.province);
+      const abbrev = abbrevFor(r.province) || r.province;
       const mrText = st.mortality!=null ? `${st.mortality} per 100,000` : 'n/a';
       const cfrText = st.cfr!=null ? `${st.cfr}%` : 'suppressed (&lt;20 cases)';
-      return `<b>${fullTitle}</b> <span class="d">${fullTitle!==abbrev?'('+abbrev+') ':''}— ${year}</span><hr>`+
+      return `<b>${r.province}</b> <span class="d">(${abbrev}) — ${year}</span><hr>`+
         `Deaths <b>${fmt(st.deaths)}</b> — ${pctOfScope}% of the ${fmt(yearTotalDeaths)} in ${year}<br>`+
         `Cases <b>${fmt(st.cases)}</b> · population ${fmt(st.population)}<hr>`+
         `Mortality rate <b>${mrText}</b><br>`+
         `Case fatality rate <b>${cfrText}</b><hr>`+
-        `<span class="d">${TOUCH_ONLY ? 'Tap again to' : 'Click to'} ${r.province===selectedProv?'clear':'add to'} the province filter</span>`;
+        `<span class="d">Click to ${r.province===selectedProv?'clear':'add to'} the province filter</span>`;
     }
 
     deathsChart = new Chart(deathsCanvas, {
@@ -1218,7 +979,7 @@ function renderNational(){
       options:{
         indexAxis: 'y',
         responsive:true, maintainAspectRatio:false,
-        layout:{ padding:{right: narrow ? (metric==='count'?42:52) : (metric==='count'?90:110)} },
+        layout:{ padding:{right: metric==='count'?90:110} },
         plugins:{legend:{display: true}, tooltip:{enabled:false}},
         onHover:(evt, elements)=>{
           if(!elements.length){ deathsTipEl.style.display = 'none'; return; }
@@ -1226,16 +987,19 @@ function renderNational(){
           const r = ranked[el.index];
           const year = years[el.datasetIndex];
           deathsTipEl.innerHTML = deathsTipHTML(r, year);
-          placeFloatingTip(deathsTipEl, evt.native.clientX + 14, evt.native.clientY + window.scrollY + 10);
+          deathsTipEl.style.display = 'block';
+          deathsTipEl.style.left = (evt.native.clientX + 14) + 'px';
+          deathsTipEl.style.top = (evt.native.clientY + window.scrollY + 10) + 'px';
         },
         onClick:(evt, elements)=>{
           if(!elements.length) return;
           const r = ranked[elements[0].index];
-          setSharedProvince(fullOf(r.province));
+          gProvSelect.value = (r.province === selectedProv) ? '__ALL__' : r.province;
+          gProvSelect.dispatchEvent(new Event('change'));
         },
         scales:{
           x:{ beginAtZero:true, title:{display:true, text: metric==='mortality' ? 'Deaths per 100,000 population' : metric==='cfr' ? 'Deaths per 100 cases (%)' : 'Deaths'} },
-          y:{ ticks:{autoSkip:false, font:{size: narrow ? 9.5 : 10.5, weight: ranked.map(r=>r.province===selectedProv?'700':'400')}, color: ranked.map(r=>r.province===selectedProv?PALETTE.turquoise:PALETTE.textMuted)} }
+          y:{ ticks:{autoSkip:false, font:{size:10.5, weight: ranked.map(r=>r.province===selectedProv?'700':'400')}, color: ranked.map(r=>r.province===selectedProv?PALETTE.turquoise:PALETTE.textMuted)} }
         }
       },
       plugins: [rowHighlightPlugin, barLabelPlugin]
@@ -1297,6 +1061,7 @@ function renderNational(){
     }
   }
   document.querySelectorAll('input[name="deaths-chart-metric"]').forEach(r=>r.addEventListener('change', renderDeathsChart));
+  gProvSelect.addEventListener('change', renderDeathsChart);
   renderDeathsChart();
 
   // Pyramid layout, matching B2 (Age-Sex Pyramid) exactly: one series runs left as negative
@@ -1362,22 +1127,6 @@ function renderNational(){
     const yr = src[String(year)] || {};
     return {cases: yr[String(month)] || 0, deaths: (prov==='__ALL__' ? monthly.national_monthly_deaths : (monthly.province_monthly_deaths[prov]||{}))[String(year)]?.[String(month)] || 0};
   }
-  // Returns undefined for a month that was never reported, 0 for a month that reported zero.
-  // getCasesDeaths() collapses both to 0, which is fine for summing but wrong for the endemic
-  // channel (a missing month must shrink the baseline, not drag its mean down) and for the
-  // cumulative curve (which should break, not flat-line through a gap).
-  function rawMonthCases(prov, year, monthNum){
-    if(year === 2026){
-      const rec = prov==='__ALL__' ? tc2026.national_total_2026 : tc2026.provinces_2026.find(p=>p.province===abbrevFor(prov));
-      if(!rec) return undefined;
-      const v = rec.monthly[MONTH_LABELS[monthNum-1]];
-      const isFuture = monthNum >= 8 && v && v.cases === 0 && v.deaths === 0;
-      return (v && !isFuture) ? v.cases : undefined;
-    }
-    const src = prov==='__ALL__' ? monthly.national_monthly_cases : (monthly.province_monthly_cases[prov]||{});
-    return (src[String(year)] || {})[String(monthNum)];
-  }
-
   function rangeLabel(range){
     const f = MONTH_LABELS[range.fromIdx%12] + ' ' + Math.floor(range.fromIdx/12);
     const t = MONTH_LABELS[range.toIdx%12] + ' ' + Math.floor(range.toIdx/12);
@@ -1410,16 +1159,15 @@ function renderNational(){
     return MONTH_LABELS.map((_,i)=> yr[String(i+1)] || 0);
   }
   let trendChart = null;
+  let n4Metric = 'cases';
   function renderTrendChart(){
-    const prov = gProvSelect.value;          // mirrors the shared province, not its own copy
-    if(provSelect.value !== prov) provSelect.value = prov;
+    const prov = provSelect.value;
     const selectedYears = yearDD.getSelected();
     const datasets = selectedYears.map(y=>{
       const casesSeries = getMonthlySeries(prov, y);
-      const raw = sharedMetric === 'ir'
-        ? casesSeries.map(c=>{ const pop = popForYear(prov, y); return (pop && c!=null) ? +(c/pop*100000).toFixed(1) : null; })
+      const series = n4Metric === 'ir'
+        ? casesSeries.map(c=>{ const pop = popForYear(prov, y); return pop ? +(c/pop*100000).toFixed(1) : null; })
         : casesSeries;
-      const series = clipToMonthWindow(raw);
       return {
         label: y===2026 ? '2026 (partial, through last reported month)' : String(y), data: series,
         borderColor: colorForYear(y), backgroundColor: colorForYear(y), fill:false, tension:.3, pointRadius:3,
@@ -1432,8 +1180,8 @@ function renderNational(){
       data:{ labels: MONTH_LABELS, datasets },
       options:{ responsive:true, maintainAspectRatio:false,
         interaction:{ mode:'index', intersect:false },
-        plugins:{legend:{position:'top', labels:{boxWidth:10, padding: NARROW()?8:10}}, tooltip:{ mode:'index', intersect:false }},
-        scales:{ y:{ beginAtZero:true, title:{display:true, text: sharedMetric==='ir'?'IR per 100,000':'Cases'} } } }
+        plugins:{legend:{position:'top'}, tooltip:{ mode:'index', intersect:false }},
+        scales:{ y:{ beginAtZero:true, title:{display:true, text: n4Metric==='ir'?'IR per 100,000':'Cases'} } } }
     });
     const ytdNote = document.getElementById('trend-2026-note');
     if(prov==='__ALL__'){
@@ -1444,40 +1192,46 @@ function renderNational(){
       ytdNote.textContent = p2026 ? `2026 total so far for ${prov}: ${fmt(p2026.cases2026)} cases, ${fmt(p2026.deaths2026)} deaths. Later months are left blank, not zero — not yet reported.` : `No 2026 figure available for ${prov}.`;
     }
   }
-  provSelect.addEventListener('change', ()=> setSharedProvince(provSelect.value));
+  provSelect.addEventListener('change', renderTrendChart);
   document.querySelectorAll('#n4-metric-toggle .seg-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ setSharedMetric(btn.dataset.metric); });
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#n4-metric-toggle .seg-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      n4Metric = btn.dataset.metric;
+      renderTrendChart();
+    });
   });
   renderTrendChart();
 
   // ---- N1: Outbreak Signal — endemic-channel method (mean + 2SD), counts only ----
   const HIST_YEARS_EPI = [2018,2019,2020,2021,2022,2023,2024,2025];
-  // Rebuilt on every province change: an endemic channel is only meaningful against the history
-  // of the same population, so selecting a province re-derives mean + 2SD from that province's
-  // own 2018-2025 months rather than comparing it to a national threshold it can never reach.
-  let epiChannelMeanSD = [], epi2026Actual = [];
-  function computeEpiSeries(){
-    const prov = gProvSelect.value;
-    epiChannelMeanSD = MONTH_LABELS.map((m,i)=>{
-      const vals = HIST_YEARS_EPI.map(y => rawMonthCases(prov, y, i+1)).filter(v => v !== undefined);
-      const n = vals.length;
-      const mean = n ? vals.reduce((a,b)=>a+b,0)/n : 0;
-      const sd = n ? Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/n) : 0;
-      return { month:m, mean, threshold: mean+2*sd, n };
-    });
-    epi2026Actual = MONTH_LABELS.map((m,i)=>{
-      const v = rawMonthCases(prov, 2026, i+1);
-      return v===undefined ? null : v;
-    });
+  function histValsForMonth(monthNum){
+    // December 2024 was never reported (not zero — genuinely absent), so December's baseline
+    // uses 7 years instead of 8. Every other month uses the full 8.
+    return HIST_YEARS_EPI
+      .filter(y => (monthly.national_monthly_cases[String(y)]||{})[String(monthNum)] !== undefined)
+      .map(y => monthly.national_monthly_cases[String(y)][String(monthNum)]);
   }
+  const epiChannelMeanSD = MONTH_LABELS.map((m,i)=>{
+    const vals = histValsForMonth(i+1);
+    const n = vals.length;
+    const mean = vals.reduce((a,b)=>a+b,0)/n;
+    const sd = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/n);
+    return { month:m, mean, threshold: mean+2*sd, n };
+  });
+  const epi2026Actual = MONTH_LABELS.map(m=>{
+    const v = tc2026.national_total_2026.monthly[m];
+    const idx = MONTH_LABELS.indexOf(m);
+    const isFuture = idx>=7 && v && v.cases===0 && v.deaths===0;
+    return (v && !isFuture) ? v.cases : null;
+  });
+  const lastReportedIdxEpi = epi2026Actual.reduce((last,v,i)=> v!=null ? i : last, -1);
 
   function renderEpiChannel(){
-    computeEpiSeries();
-    const scope = selectedProvinceOrNull() || 'Cambodia';
     const channel = epiChannelMeanSD;
     const aboveMonths = channel.filter((c,i)=>epi2026Actual[i]!=null && epi2026Actual[i]>c.threshold).map(c=>c.month);
     document.getElementById('chart-epidemic-channel').closest('.card').querySelector('h3').innerHTML =
-      `<span class="vno">N1</span>${scope} — ${aboveMonths.length} month${aboveMonths.length===1?'':'s'} above the mean + 2SD threshold: ${aboveMonths.join(', ')||'none'}`;
+      `<span class="vno">N1</span>${aboveMonths.length} month${aboveMonths.length===1?'':'s'} above the mean + 2SD threshold: ${aboveMonths.join(', ')||'none'}`;
 
     // Red is reserved for an actual epidemic-threshold breach — the reference lines themselves
     // stay neutral (--text-muted); only breaching points, and the band above the threshold, use it.
@@ -1526,17 +1280,9 @@ function renderNational(){
     document.getElementById('epi-legend').style.display = 'none';
 
     const shortMonths = channel.filter(c=>c.n < 8).map(c=>`${c.month} (${c.n} yrs)`);
-    // A threshold built on single-digit monthly counts is arithmetic, not signal — say so rather
-    // than letting a province cross "mean + 2SD" because it went from 1 case to 4.
-    // Measured across the 25 provinces: baseline monthly means run from Kep at ~10 to Phnom Penh
-    // at ~440 (national ~2,460). Below roughly 30 a month, mean + 2SD is only a few cases wide,
-    // so a normal fluctuation clears it. 30 flags the five smallest provinces and nothing else.
-    const meanOfMeans = channel.reduce((a,c)=>a+c.mean,0) / (channel.length||1);
-    const thin = meanOfMeans < 30;
     document.getElementById('epidemic-channel-note').innerHTML =
-      `Scope: <b>${scope}</b>. Counts, not rates — the threshold is defined on counts. Baseline is that same scope's 8 prior years (2018-2025), built only from months that actually reported, so each month rests on between 7 and 8 years.`+
-      (shortMonths.length ? `<br>Shorter baseline: ${shortMonths.join(', ')} — December 2024 was never reported.` : '')+
-      (thin ? `<br><b>Read with caution:</b> this scope averages only ${meanOfMeans.toFixed(0)} cases a month across the baseline, so mean + 2SD sits just a few cases above the mean — a breach here is far weaker evidence than a national one.` : '');
+      `Counts, not rates — the threshold is defined on counts. Baseline is 8 prior years (2018-2025), built only from months that actually reported, so each month rests on between 7 and 8 years.`+
+      (shortMonths.length ? `<br>Shorter baseline: ${shortMonths.join(', ')} — December 2024 was never reported.` : '');
   }
   renderEpiChannel();
 
@@ -1546,12 +1292,16 @@ function renderNational(){
   let cumulChart = null;
   function cumulativeSeriesFor(year){
     let running = 0;
-    const win = globalMonthWindow();
-    const prov = gProvSelect.value;
     return MONTH_LABELS.map((m,i)=>{
       const monthNum = i+1;
-      if(win && (monthNum < win[0] || monthNum > win[1])) return null; // outside the selected window
-      const val = rawMonthCases(prov, year, monthNum);
+      let val;
+      if(year === 2026){
+        const v = tc2026.national_total_2026.monthly[m];
+        const isFuture = i>=7 && v && v.cases===0 && v.deaths===0;
+        val = (v && !isFuture) ? v.cases : undefined;
+      } else {
+        val = (monthly.national_monthly_cases[String(year)]||{})[String(monthNum)];
+      }
       if(val === undefined) return null; // skip unreported months rather than flat-lining through them
       running += val;
       return running;
@@ -1591,10 +1341,9 @@ function renderNational(){
       const s = cumulativeSeriesFor(y);
       return `${fmt(s.filter(v=>v!=null).pop() || 0)} in ${y}`;
     });
-    const cumulScope = selectedProvinceOrNull() || 'Cambodia';
     document.getElementById('cumulative-note').innerHTML = compareTotals.length
-      ? `<b>${cumulScope}</b> — through the last reported month, 2026 has accumulated <b>${fmt(total2026)}</b> cases versus ${compareTotals.join(', ')} at the same point.`
-      : `<b>${cumulScope}</b> — 2026 has accumulated <b>${fmt(total2026)}</b> cases so far. Pick at least one year to compare against.`;
+      ? `Through the last reported month, 2026 has accumulated <b>${fmt(total2026)}</b> cases versus ${compareTotals.join(', ')} at the same point.`
+      : `2026 has accumulated <b>${fmt(total2026)}</b> cases so far. Pick at least one year to compare against.`;
   }
   renderCumulativeChart();
 
@@ -1602,6 +1351,8 @@ function renderNational(){
 
   // ---- Yearly national trend (2018-2026) — filtered by province + [fromYear,toYear] ----
   let yearlyTrendChart = null;
+  let globalFilterTouched = false;
+  let n2Metric = 'cases';
   function popForYear(province, year){
     if(province === '__ALL__'){
       return Object.values(BUNDLE.full_population_2018_2026).reduce((s,p)=>s+(p[String(year)]||0),0);
@@ -1631,12 +1382,11 @@ function renderNational(){
       const pop = popForYear(range.province, r.year);
       return { ...r, ir: pop ? +(r.cases/pop*100000).toFixed(1) : null };
     });
-    document.getElementById('n2-metric-note').textContent = sharedMetric === 'ir'
+    document.getElementById('n2-metric-note').textContent = n2Metric === 'ir'
       ? 'Full calendar-year totals 2018-2025 (historical line-list) · 2026 is year-to-date, not a full year — read the bar height accordingly. Bars = incidence rate per 100,000 population (left axis), line = deaths (right axis, drawn in front).'
       : 'Full calendar-year totals 2018-2025 (historical line-list) · 2026 is year-to-date, not a full year — read the bar height accordingly. Bars = cases (left axis), line = deaths (right axis, drawn in front).';
     if(yearlyTrendChart) yearlyTrendChart.destroy();
     const hatch2026 = hatchPattern(COLORS[0]);
-    const narrow = NARROW();
     // Elevated-mortality years, called out directly on the chart rather than left for the reader
     // to spot in a small-multiples deaths line.
     const HIGH_MORTALITY_YEARS = [2019, 2023, 2025];
@@ -1646,12 +1396,12 @@ function renderNational(){
         const meta = chart.getDatasetMeta(0);
         const ctx = chart.ctx;
         ctx.save();
-        ctx.font = narrow ? '700 8.5px Arial' : '700 10.5px Arial'; ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.textBody;
+        ctx.font = '700 10.5px Arial'; ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.textBody;
         rows.forEach((r,i)=>{
           if(!HIGH_MORTALITY_YEARS.includes(r.year)) return;
           const bar = meta.data[i];
           if(!bar) return;
-          ctx.fillText(narrow ? '▲' : '▲ elevated mortality', bar.x, bar.y - 22);
+          ctx.fillText('▲ elevated mortality', bar.x, bar.y - 22);
         });
         ctx.restore();
       }
@@ -1663,60 +1413,30 @@ function renderNational(){
         const meta = chart.getDatasetMeta(0);
         const ctx = chart.ctx;
         ctx.save();
-        ctx.font = narrow ? '400 8.5px Arial' : '400 10.5px Arial'; ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.textMuted;
+        ctx.font = '400 10.5px Arial'; ctx.textAlign = 'center'; ctx.fillStyle = PALETTE.textMuted;
         meta.data.forEach((bar, i)=>{
           const val = caseValues[i];
           if(val==null) return;
-          const text = sharedMetric==='ir' ? val.toFixed(1) : fmt(Math.round(val));
+          const text = n2Metric==='ir' ? val.toFixed(1) : fmt(Math.round(val));
           ctx.fillText(text, bar.x, bar.y - 8);
         });
         ctx.restore();
       }
     };
-    // Death count printed at every point on the line. Gold on white is far too low-contrast to
-    // read as text, so the number is drawn in body colour with a white halo — the same treatment
-    // the map uses for province labels over coloured polygons. Where the line runs near the top
-    // of the plot the label flips below the point, so it can't be clipped or collide with the
-    // "elevated mortality" annotation sitting above the bar.
-    const deathValueLabelPluginN2 = {
-      id: 'deathValueLabelN2',
-      afterDatasetsDraw(chart){
-        if(!chart.isDatasetVisible(1)) return;
-        const meta = chart.getDatasetMeta(1);
-        const area = chart.chartArea;
-        const ctx = chart.ctx;
-        ctx.save();
-        ctx.font = narrow ? '700 8.5px Arial' : '700 10.5px Arial';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
-        meta.data.forEach((pt, i)=>{
-          const v = rows[i] && rows[i].deaths;
-          if(v==null) return;
-          const nearTop = (pt.y - area.top) < (area.bottom - area.top) * 0.22;
-          const y = nearTop ? pt.y + 15 : pt.y - 10;
-          const text = fmt(v);
-          ctx.strokeStyle = PALETTE.surface; ctx.lineWidth = 3.5;
-          ctx.strokeText(text, pt.x, y);
-          ctx.fillStyle = PALETTE.textBody;
-          ctx.fillText(text, pt.x, y);
-        });
-        ctx.restore();
-      }
-    };
-    const caseValues = sharedMetric === 'ir' ? rows.map(y=>y.ir) : rows.map(y=>y.cases);
+    const caseValues = n2Metric === 'ir' ? rows.map(y=>y.ir) : rows.map(y=>y.cases);
     yearlyTrendChart = new Chart(document.getElementById('chart-trend-yearly'), {
       data:{ labels: rows.map(y=> y.year===2026 ? '2026 (YTD)' : String(y.year)),
         datasets:[
-          {type:'bar', label: sharedMetric==='ir'?'IR per 100,000':'Cases', data: caseValues, backgroundColor: rows.map(y=>y.year===2026?hatch2026:COLORS[0]), yAxisID:'y', order:2, pointStyle:'rect'},
-          {type:'line', label:'Deaths', data: rows.map(y=>y.deaths), borderColor: PALETTE.gold, backgroundColor: PALETTE.gold, yAxisID:'y1', tension:.3, pointRadius:4, borderWidth:3, order:1, pointStyle:'line'}
+          {type:'bar', label: n2Metric==='ir'?'IR per 100,000':'Cases', data: caseValues, backgroundColor: rows.map(y=>y.year===2026?hatch2026:COLORS[0]), yAxisID:'y', order:2, pointStyle:'rect'},
+          {type:'line', label:'Deaths', data: rows.map(y=>y.deaths), borderColor: COLORS[3], backgroundColor: COLORS[3], yAxisID:'y1', tension:.3, pointRadius:4, borderWidth:3, order:1, pointStyle:'line'}
         ]},
       options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'top', labels:{usePointStyle:true}}},
         scales:{
-          y:{ beginAtZero:true, position:'left', title:{display:true, text: sharedMetric==='ir'?'IR per 100,000':'Cases'} },
-          y1:{ beginAtZero:true, position:'right', title:{display:true, text:'Deaths'}, grid:{drawOnChartArea:false}, ticks:{precision:0} },
-          x:{ ticks:{ maxRotation: narrow?60:0, minRotation: narrow?60:0, font:{size: narrow?9:11} } }
+          y:{ beginAtZero:true, position:'left', title:{display:true, text: n2Metric==='ir'?'IR per 100,000':'Cases'} },
+          y1:{ beginAtZero:true, position:'right', title:{display:true, text:'Deaths'}, grid:{drawOnChartArea:false}, ticks:{precision:0} }
         }
       },
-      plugins: [yearAnnotationPlugin, barValueLabelPluginN2, deathValueLabelPluginN2]
+      plugins: [yearAnnotationPlugin, barValueLabelPluginN2]
     });
     const peak = [...rows].sort((a,b)=>b.cases-a.cases)[0];
     const scopeLabel = range.province === '__ALL__' ? 'Cambodia' : range.province;
@@ -1725,7 +1445,12 @@ function renderNational(){
       : 'No years in range.';
   }
   document.querySelectorAll('#n2-metric-toggle .seg-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ setSharedMetric(btn.dataset.metric); });
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#n2-metric-toggle .seg-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      n2Metric = btn.dataset.metric;
+      renderYearlyTrend();
+    });
   });
 
   // ---- Continuous monthly severity timeline, Vietnam-style — continuous range from global filter ----
@@ -1741,7 +1466,7 @@ function renderNational(){
     const prov = range.province;
     const sev = prov==='__ALL__' ? sevNational : (sevByProvince[prov] || {});
     const months = monthsInRange(range.fromIdx, range.toIdx);
-    const sevLabels = [], fullLabels = [], dfArr=[], dhfArr=[], dssArr=[], dhfdArr=[], total2026Arr=[], deathsArr=[];
+    const sevLabels = [], dfArr=[], dhfArr=[], dssArr=[], dhfdArr=[], total2026Arr=[], dssPctArr=[];
     let has2026 = false;
     let totDF=0, totDHF=0, totDSS=0, totDHFD=0;
     const yearAtIndex = [];
@@ -1750,32 +1475,26 @@ function renderNational(){
       // Plain month-letter tick for every month — the year is now shown separately (divider +
       // label plugin below) rather than merged into the tick text.
       sevLabels.push(MONTH_LABELS[mi-1][0]);
-      fullLabels.push(MONTH_LABELS[mi-1] + ' ' + y);
       yearAtIndex.push(y);
       if(y === 2026){
         has2026 = true;
         const {cases, deaths} = getCasesDeaths(prov, y, mi);
         dfArr.push(0); dhfArr.push(0); dssArr.push(0); dhfdArr.push(0);
-        total2026Arr.push(cases);
-        // The source carries no severity split for 2026, but it does carry deaths — so the
-        // deaths line stays continuous across the 2025/2026 boundary instead of dropping to zero.
-        deathsArr.push(cases==null ? null : deaths);
+        total2026Arr.push(cases); dssPctArr.push(null);
       } else {
         const cats = (sev[String(y)]||{})[String(mi)] || {};
         const df=cats.DF||0, dhf=cats.DHF||0, dss=cats.DSS||0, dhfd=cats.DHFD||0;
         dfArr.push(df); dhfArr.push(dhf); dssArr.push(dss); dhfdArr.push(dhfd);
         total2026Arr.push(null);
-        deathsArr.push(dhfd);
+        const tot = df+dhf+dss+dhfd;
+        dssPctArr.push(tot>0 ? +(dss/tot*100).toFixed(2) : null);
         totDF+=df; totDHF+=dhf; totDSS+=dss; totDHFD+=dhfd;
       }
     });
     const sevCanvas = document.getElementById('chart-severity-timeline');
     sevCanvas.parentElement.style.position = 'relative';
     sevCanvas.parentElement.style.width = '100%';
-    // On a narrow screen 24-36 monthly bars can't fit legibly, so the chart keeps a usable
-    // minimum width and its wrapper (.scroll-x) scrolls sideways instead of squashing every bar
-    // into 4 pixels. On a wide screen it behaves exactly as before.
-    sevCanvas.parentElement.style.minWidth = NARROW() ? Math.max(300, months.length*28) + 'px' : '';
+    sevCanvas.parentElement.style.height = '360px';
     if(severityChart) severityChart.destroy();
     if(months.length === 0){ return; }
     const datasets = [
@@ -1787,7 +1506,7 @@ function renderNational(){
     if(has2026){
       datasets.push({type:'bar', label:'Total cases (2026 — severity mix unavailable)', data: total2026Arr, backgroundColor:hatchPattern(PALETTE.textMuted), stack:'s', yAxisID:'y', order:2, pointStyle:'rect'});
     }
-    datasets.push({type:'line', label:'Deaths (right axis)', data: deathsArr, borderColor:PALETTE.darkRed, backgroundColor:PALETTE.darkRed, yAxisID:'y1', tension:.2, pointRadius:2.4, pointHoverRadius:5, borderWidth:1.6, borderDash:[2,3], order:1, pointStyle:'line', spanGaps:false});
+    datasets.push({type:'line', label:'DSS share (right axis)', data: dssPctArr, borderColor:PALETTE.darkRed, backgroundColor:PALETTE.darkRed, yAxisID:'y1', tension:.25, pointRadius:0, borderWidth:1.75, borderDash:[6,4], order:1, pointStyle:'line', spanGaps:false});
     // Draws a subtle vertical divider at each year boundary and the year number centred under
     // that year's group of month bars — keeps the year visually separate from the month letters
     // rather than merging them into one tick label.
@@ -1835,78 +1554,19 @@ function renderNational(){
         ctx.restore();
       }
     };
-    // Death counts sit in their own band above the plot rather than riding the dotted line.
-    // On the line they collided with stacked-bar totals and moved with every y-axis rescale;
-    // in a fixed row they read as one clean sequence you can scan across, and the line still
-    // carries the shape. Only non-zero months are printed.
-    const deathTopLabelPlugin = {
-      id: 'deathTopLabel',
-      afterDraw(chart){
-        const dsIndex = chart.data.datasets.length - 1; // deaths line is pushed last
-        if(!chart.isDatasetVisible(dsIndex)) return;
-        const area = chart.chartArea, xScale = chart.scales.x, ctx = chart.ctx;
-        const bandY = area.top - 13;
-        ctx.save();
-        ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
-        ctx.font = '700 9.5px Arial'; ctx.textAlign = 'center';
-        deathsArr.forEach((v,i)=>{
-          if(!v) return;
-          const x = xScale.getPixelForValue(i);
-          ctx.strokeStyle = PALETTE.surface; ctx.lineWidth = 3;
-          ctx.strokeText(String(v), x, bandY);
-          ctx.fillStyle = PALETTE.darkRed;
-          ctx.fillText(String(v), x, bandY);
-        });
-        ctx.font = '700 8.5px Arial'; ctx.textAlign = 'right';
-        ctx.strokeStyle = PALETTE.surface; ctx.lineWidth = 3;
-        ctx.strokeText('DEATHS', area.left - 4, bandY);
-        ctx.fillStyle = PALETTE.darkRed;
-        ctx.fillText('DEATHS', area.left - 4, bandY);
-        ctx.restore();
-      }
-    };
     severityChart = new Chart(sevCanvas, {
       data:{ labels: sevLabels, datasets },
       options:{
         responsive:true, maintainAspectRatio:false,
-        layout:{ padding:{top:26, bottom:14} },   // top band reserved for the death counts
-        interaction:{ mode:'index', intersect:false },
-        plugins:{
-          legend:{position:'bottom', labels:{usePointStyle:true}},
-          // Hovering anywhere in a month's column gives the full picture for that month —
-          // every severity band with its share, plus total, deaths and CFR in the footer.
-          tooltip:{
-            mode:'index', intersect:false,
-            filter: (item)=> item.parsed.y != null && item.parsed.y !== 0 && item.dataset.label !== 'Deaths (right axis)',
-            callbacks:{
-              title: (items)=> items.length ? fullLabels[items[0].dataIndex] : '',
-              label: (ctx)=>{
-                const v = ctx.parsed.y;
-                const tot = stackTotals[ctx.dataIndex] || 0;
-                return `${ctx.dataset.label}: ${fmt(v)}` + (tot ? ` (${(v/tot*100).toFixed(1)}%)` : '');
-              },
-              footer: (items)=>{
-                if(!items.length) return '';
-                const i = items[0].dataIndex;
-                const tot = stackTotals[i] || 0;
-                const d = deathsArr[i] || 0;
-                const dss = dssArr[i] || 0;
-                const out = ['Total cases: ' + fmt(tot)];
-                out.push('Deaths: ' + fmt(d) + (tot ? '  ·  CFR ' + (d/tot*100).toFixed(2) + '%' : ''));
-                if(dss) out.push('DSS: ' + fmt(dss) + (tot ? '  ·  ' + (dss/tot*100).toFixed(1) + '% of the month' : ''));
-                if(total2026Arr[i] != null) out.push('2026 — no severity split in the source');
-                return out.join('\n');
-              }
-            }
-          }
-        },
+        layout:{ padding:{bottom:14} },
+        plugins:{ legend:{position:'bottom', labels:{usePointStyle:true}} },
         scales:{
           x:{ stacked:true, ticks:{autoSkip:false, maxRotation:0, minRotation:0, font:{size:10.5, weight:'400'}, color:PALETTE.textMuted} },
           y:{ stacked:true, beginAtZero:true, position:'left', title:{display:true, text:'Cases'} },
-          y1:{ beginAtZero:true, position:'right', title:{display:true, text:'Deaths'}, grid:{drawOnChartArea:false}, ticks:{precision:0} }
+          y1:{ beginAtZero:true, position:'right', title:{display:true, text:'DSS %'}, grid:{drawOnChartArea:false}, ticks:{callback:v=>v+'%'} }
         }
       },
-      plugins: [yearDividerPlugin, stackTotalLabelPlugin, deathTopLabelPlugin]
+      plugins: [yearDividerPlugin, stackTotalLabelPlugin]
     });
     requestAnimationFrame(()=> severityChart.resize());
 
@@ -1915,7 +1575,7 @@ function renderNational(){
     const pct = n => grandTotal ? (n/grandTotal*100).toFixed(1) : '0.0';
     const yearsShown = [...new Set(months.filter(m=>m.year<2026).map(m=>m.year))];
     const noteParts = [];
-    noteParts.push(`${scopeLabel}, ${rangeLabel(range)}: DF — ${fmt(totDF)} (${pct(totDF)}%) · DHF — ${fmt(totDHF)} (${pct(totDHF)}%) · DSS — ${fmt(totDSS)} (${pct(totDSS)}%) · Deaths (DHFD) — ${fmt(totDHFD)} (${pct(totDHFD)}%). Deaths per month on the right axis (dotted red).`);
+    noteParts.push(`${scopeLabel}, ${rangeLabel(range)}: DF — ${fmt(totDF)} (${pct(totDF)}%) · DHF — ${fmt(totDHF)} (${pct(totDHF)}%) · DSS — ${fmt(totDSS)} (${pct(totDSS)}%) · Deaths (DHFD) — ${fmt(totDHFD)} (${pct(totDHFD)}%). DSS share on the right axis (dashed).`);
     if(has2026) noteParts.push(`Severity is reported for ${yearsShown.length ? yearsShown[0]+'-'+yearsShown[yearsShown.length-1] : 'the historical years'} only — the source carries no severity split for 2026 YTD (shown in gray).`);
     document.getElementById('severity-2026-note').textContent = noteParts.join(' ');
   }
@@ -2008,8 +1668,6 @@ function renderNational(){
     }
 
     // ---- Custom dark tooltip (real popup, not the browser-native title attribute) ----
-    // Mouse: hover in / hover out. Touch (no hover available): tap to open, tap again — or tap
-    // anywhere else — to close. Without this the calculation detail was unreachable on a phone.
     let tipEl = document.getElementById('kpi-tooltip');
     if(!tipEl){
       tipEl = document.createElement('div');
@@ -2017,34 +1675,16 @@ function renderNational(){
       tipEl.className = 'kpi-tooltip';
       document.body.appendChild(tipEl);
     }
-    if(!window._kpiTipOutsideBound){
-      document.addEventListener('click', (e)=>{
-        const t = document.getElementById('kpi-tooltip');
-        if(t && !e.target.closest('.kpi-card')) t.style.display = 'none';
-      });
-      window._kpiTipOutsideBound = true;
-    }
     function setTip(cardId, html){
       const card = document.getElementById(cardId);
-      const show = ()=>{
+      card.onmouseenter = (e)=>{
         tipEl.innerHTML = html;
-        tipEl.dataset.owner = cardId;
+        tipEl.style.display = 'block';
         const r = card.getBoundingClientRect();
-        placeFloatingTip(tipEl, r.left, r.bottom + window.scrollY + 6);
+        tipEl.style.left = Math.max(8, r.left) + 'px';
+        tipEl.style.top = (r.bottom + window.scrollY + 6) + 'px';
       };
-      const hide = ()=>{ tipEl.style.display = 'none'; tipEl.dataset.owner = ''; };
-      if(TOUCH_ONLY){
-        card.onmouseenter = null; card.onmouseleave = null;
-        card.style.cursor = 'pointer';
-        card.onclick = (e)=>{
-          e.stopPropagation();
-          const isOpen = tipEl.style.display === 'block' && tipEl.dataset.owner === cardId;
-          if(isOpen) hide(); else show();
-        };
-      } else {
-        card.onmouseenter = show;
-        card.onmouseleave = hide;
-      }
+      card.onmouseleave = ()=>{ tipEl.style.display = 'none'; };
     }
 
     document.getElementById('kpi-cases-value').textContent = fmt(cur.cases);
@@ -2139,105 +1779,14 @@ function renderNational(){
   }
 
 
-  // Charts built later in this function (heatmap, risk map, tables) don't exist during the first
-  // render pass, so the cross-filter fan-out stays switched off until everything is wired.
-  let crossFilterReady = false;
   function renderAllFilteredCharts(){
     renderYearlyTrend();
     renderSeverityTimeline();
     renderTopKpiRow();
     renderInsightPanel();
-    if(!crossFilterReady) return;
-    renderTrendChart();
-    renderCumulativeChart();
-    renderEpiChannel();
-    renderProvinceChart();
-    renderDeathsChart();
-    renderProvinceMonthHeatmap();
-    applyGlobalProvinceToMultiYear();
-    applyGlobalProvinceToProvTable();
-    if(window._riskMapGetInstances && window._riskMapGetInstances().length) renderRiskMap();
-    renderFilterChips();
-  }
-
-  function setSharedMetric(m){
-    if(m === sharedMetric) return;
-    sharedMetric = m;
-    syncMetricToggleUI();
-    renderYearlyTrend();
-    renderTrendChart();
-    if(window._riskMapGetInstances && window._riskMapGetInstances().length) renderRiskMap();
-    renderFilterChips();
-  }
-  function setSharedProvince(fullName){
-    const next = (fullName && fullName !== gProvSelect.value) ? fullName : '__ALL__';
-    gProvSelect.value = next;
-    renderAllFilteredCharts();
-  }
-  window._setSharedProvince = setSharedProvince;
-  function selectedProvinceOrNull(){ return gProvSelect.value === '__ALL__' ? null : gProvSelect.value; }
-
-  // The global range is a continuous span of months. Each chart honours it at its own
-  // resolution: year-resolution charts switch to the years the span covers; month-resolution
-  // charts (N4, L2) clip to the month window when the span sits inside a single year, so
-  // "Mar-Aug" means Mar-Aug in every year shown rather than blanking the comparison years.
-  function yearsInGlobalRange(){
-    const r = getGlobalRange();
-    const out = [];
-    for(let y = Math.floor(r.fromIdx/12); y <= Math.floor(r.toIdx/12); y++) out.push(y);
-    return out;
-  }
-  function globalMonthWindow(){
-    if(!globalFilterTouched) return null;
-    const r = getGlobalRange();
-    if(Math.floor(r.fromIdx/12) !== Math.floor(r.toIdx/12)) return null; // spans years — use all 12
-    const m1 = (r.fromIdx%12)+1, m2 = (r.toIdx%12)+1;
-    return (m1===1 && m2===12) ? null : [m1, m2];
-  }
-  function clipToMonthWindow(series){
-    const w = globalMonthWindow();
-    if(!w) return series;
-    return series.map((v,i)=> (i+1 < w[0] || i+1 > w[1]) ? null : v);
-  }
-  function propagateRangeToLocalControls(){
-    const ys = yearsInGlobalRange();
-    yearDD.setSelected(ys, true);
-    provYearDD.setSelected(ys, true);
-    deathsYearDD.setSelected(ys, true);
-    irMapYearDD.setSelected(ys, true);
-    const cmp = ys.filter(y => y !== 2026);
-    cumulYearDD.setSelected(cmp.length ? [cmp[cmp.length-1]] : [], true);
-    const lastY = String(ys[ys.length-1]);
-    if(v6YearSelect.querySelector('option[value="'+lastY+'"]')) v6YearSelect.value = lastY;
-  }
-
-  function renderFilterChips(){
-    const bar = document.getElementById('active-filter-bar');
-    if(!bar) return;
-    const prov = selectedProvinceOrNull();
-    if(typeof irMapProvDD !== 'undefined' && irMapProvDD) irMapProvDD.setValue(prov || '__ALL__', true);
-    const parts = ['<span class="lbl">Showing</span>'];
-    parts.push('<span class="chip' + (prov?' on':'') + '">Province <b>' + (prov || 'All 25') + '</b>' +
-      (prov ? ' <span class="x" data-clear="province" title="Clear province">&times;</span>' : '') + '</span>');
-    parts.push('<span class="chip' + (globalFilterTouched?' on':'') + '">Period <b>' + rangeLabel(getGlobalRange()) + '</b></span>');
-    parts.push('<span class="chip">Metric <b>' + (sharedMetric==='ir' ? 'IR per 100,000' : 'Cases') + '</b></span>');
-    parts.push('<button type="button" class="chip-clear" data-clear="all">Reset filters</button>');
-    bar.innerHTML = parts.join('');
-    const px = bar.querySelector('[data-clear="province"]');
-    if(px) px.addEventListener('click', ()=> setSharedProvince('__ALL__'));
-    bar.querySelector('[data-clear="all"]').addEventListener('click', ()=>{
-      gProvSelect.value = '__ALL__';
-      gFromYear.value = 2026; gFromMonth.value = 1;
-      gToYear.value = 2026; gToMonth.value = lastReported2026;
-      sharedMetric = 'ir'; syncMetricToggleUI();
-      globalFilterTouched = false;
-      propagateRangeToLocalControls();
-      renderAllFilteredCharts();
-    });
   }
   // ---- Insight Engine: 4-6 computed bullets, not hard-coded, recomputed on every filter change ----
   function renderInsightPanel(){
-    computeEpiSeries();
     const range = getGlobalRange();
     const scopeFull = range.province === '__ALL__' ? null : range.province;
     const bullets = [];
@@ -2250,19 +1799,11 @@ function renderNational(){
       const pop = (BUNDLE.full_population_2018_2026[full]||{})[String(curYear2)] || 0;
       return { province: full, ir: pop ? cases/pop*100000 : 0 };
     });
-    const sortedIR = [...provIRs].sort((a,b)=>b.ir-a.ir);
-    const topIR = sortedIR[0];
+    const topIR = [...provIRs].sort((a,b)=>b.ir-a.ir)[0];
     const natCases = myr.national_yearly.find(y=>y.year===curYear2)?.cases || 0;
     const natPop = Object.values(BUNDLE.full_population_2018_2026).reduce((s,p)=>s+(p[String(curYear2)]||0),0);
     const natIR2 = natPop ? natCases/natPop*100000 : 0;
-    if(scopeFull && natIR2){
-      const rank = sortedIR.findIndex(p=>p.province===scopeFull) + 1;
-      const me = sortedIR[rank-1];
-      if(me){
-        const ratio = natIR2 ? me.ir/natIR2 : 0;
-        bullets.push(`<b>${scopeFull}</b> ranks <b>#${rank} of ${sortedIR.length}</b> by incidence rate in ${curYear2}, at <b>${fmt(Math.round(me.ir*10)/10)} per 100,000</b> — ${ratio>=1?`<b>${ratio.toFixed(1)}×</b> above`:`<b>${(1/ratio).toFixed(1)}×</b> below`} the national average of ${fmt(Math.round(natIR2*10)/10)}. Highest is ${topIR.province} at ${fmt(Math.round(topIR.ir*10)/10)}.`);
-      }
-    } else if(topIR && natIR2){
+    if(topIR && natIR2){
       bullets.push(`<b>${topIR.province}</b> has the highest incidence rate in ${curYear2} at <b>${fmt(Math.round(topIR.ir*10)/10)} per 100,000</b> — <b>${(topIR.ir/natIR2).toFixed(1)}×</b> the national average of ${fmt(Math.round(natIR2*10)/10)}.`);
     }
 
@@ -2276,12 +1817,8 @@ function renderNational(){
         const pct = prior>0 ? (recent-prior)/prior*100 : null;
         return { province: full, recent, prior, pct };
       }).filter(r=>r.pct!=null && r.prior>=20);
-      const ranked2 = risers.sort((a,b)=>b.pct-a.pct);
-      const fastest = ranked2[0];
-      const mine = scopeFull ? ranked2.find(r=>r.province===scopeFull) : null;
-      if(mine){
-        bullets.push(`<b>${scopeFull}</b> ${mine.pct>=0?'rose':'fell'} <b>${mine.pct>=0?'+':''}${mine.pct.toFixed(0)}%</b> over the last two reported months (${fmt(mine.recent)} cases) versus the two before (${fmt(mine.prior)}) — rank ${ranked2.indexOf(mine)+1} of ${ranked2.length} provinces with enough cases to compare. Fastest overall: ${fastest.province} (+${fastest.pct.toFixed(0)}%).`);
-      } else if(fastest && fastest.pct>0){
+      const fastest = risers.sort((a,b)=>b.pct-a.pct)[0];
+      if(fastest && fastest.pct>0){
         bullets.push(`<b>${fastest.province}</b> is rising fastest: <b>+${fastest.pct.toFixed(0)}%</b> in the last two reported months (${fmt(fastest.recent)} cases) versus the two before that (${fmt(fastest.prior)}).`);
       }
     }
@@ -2292,10 +1829,9 @@ function renderNational(){
       const latestActual = epi2026Actual[lm2-1];
       if(latestChannel && latestActual!=null){
         const above = latestActual > latestChannel.threshold;
-        const sc = scopeFull || 'Cambodia';
         bullets.push(above
-          ? `<b>Outbreak signal for ${sc}: yes.</b> ${MONTH_LABELS[lm2-1]} 2026 (${fmt(latestActual)} cases) is above ${sc}'s own mean + 2SD threshold for that month (${fmt(Math.round(latestChannel.threshold))}).`
-          : `<b>Outbreak signal for ${sc}: no.</b> ${MONTH_LABELS[lm2-1]} 2026 (${fmt(latestActual)} cases) is below ${sc}'s own mean + 2SD threshold for that month (${fmt(Math.round(latestChannel.threshold))}).`);
+          ? `<b>Outbreak signal: yes.</b> ${MONTH_LABELS[lm2-1]} 2026 (${fmt(latestActual)} cases) is above the mean + 2SD threshold for that month (${fmt(Math.round(latestChannel.threshold))}).`
+          : `<b>Outbreak signal: no.</b> ${MONTH_LABELS[lm2-1]} 2026 (${fmt(latestActual)} cases) is below the mean + 2SD threshold for that month (${fmt(Math.round(latestChannel.threshold))}).`);
       }
     }
 
@@ -2305,9 +1841,9 @@ function renderNational(){
       const byCFR = [...nat.age_cases].filter(a=>a.cases2026>=20).sort((a,b)=>b.cfr2026-a.cfr2026)[0];
       if(byLoad && byCFR){
         if(byLoad.age_group === byCFR.age_group){
-          bullets.push(`<span class="d-nat">National</span> The <b>${byLoad.age_group}</b> band carries both the highest case load (${fmt(byLoad.cases2026)} cases) and the highest case fatality rate (${byCFR.cfr2026}%) — the same group to target on both fronts.`);
+          bullets.push(`The <b>${byLoad.age_group}</b> band carries both the highest case load (${fmt(byLoad.cases2026)} cases) and the highest case fatality rate (${byCFR.cfr2026}%) — the same group to target on both fronts.`);
         } else {
-          bullets.push(`<span class="d-nat">National</span> The <b>${byLoad.age_group}</b> band carries the highest case load (${fmt(byLoad.cases2026)} cases), but <b>${byCFR.age_group}</b> has the highest case fatality rate (${byCFR.cfr2026}%) — two different groups, so targeting one doesn't cover the other.`);
+          bullets.push(`The <b>${byLoad.age_group}</b> band carries the highest case load (${fmt(byLoad.cases2026)} cases), but <b>${byCFR.age_group}</b> has the highest case fatality rate (${byCFR.cfr2026}%) — two different groups, so targeting one doesn't cover the other.`);
         }
       }
     }
@@ -2316,33 +1852,8 @@ function renderNational(){
       ? bullets.map(b=>`<li>${b}</li>`).join('')
       : '<li>No cases match this selection.</li>';
   }
-  gProvSelect.addEventListener('change', ()=>{ renderAllFilteredCharts(); });
-  [gFromYear, gFromMonth, gToYear, gToMonth].forEach(el=>el.addEventListener('change', ()=>{
-    globalFilterTouched = true;
-    if(crossFilterReady) propagateRangeToLocalControls();
-    renderAllFilteredCharts();
-  }));
+  [gProvSelect, gFromYear, gFromMonth, gToYear, gToMonth].forEach(el=>el.addEventListener('change', ()=>{ globalFilterTouched = true; renderAllFilteredCharts(); }));
   renderAllFilteredCharts();
-
-  // Rotating a phone changes which breakpoint applies, so the charts whose layout depends on
-  // NARROW() (label sizes, right-hand padding, the severity timeline's scroll width) are rebuilt.
-  let _lastNarrow = NARROW();
-  let _resizeTimer = null;
-  window.addEventListener('resize', ()=>{
-    clearTimeout(_resizeTimer);
-    _resizeTimer = setTimeout(()=>{
-      const nowNarrow = NARROW();
-      if(nowNarrow !== _lastNarrow){
-        _lastNarrow = nowNarrow;
-        renderProvinceChart();
-        renderDeathsChart();
-        renderAllFilteredCharts();
-      }
-      const maps = window._riskMapGetInstances ? window._riskMapGetInstances() : [];
-      if(maps.length > 1 && window._renderRiskMap){ window._renderRiskMap(); }
-      else { maps.forEach(m=>m.invalidateSize()); }
-    }, 250);
-  });
 
 
   // ---- Live Data Quality & Reconciliation panel ----
@@ -2408,19 +1919,15 @@ function renderNational(){
     const dividerX = leftPad + 12*(cellW+1.5) + 8;
     svg.appendChild(el('line', {x1:dividerX, y1:topPad-6, x2:dividerX, y2:svgH-8, stroke:PALETTE.grid, 'stroke-width':'1'}));
 
-    const selHeatProv = selectedProvinceOrNull();
     rows.forEach((r,ri)=>{
       const y = topPad + ri*(cellH+rowGap);
-      const isSel = r.full === selHeatProv;
-      const nameEl = el('text', {x: leftPad-6, y: y+cellH-4, 'text-anchor':'end', 'font-size': isSel?'12':'11.5',
-        'font-weight': isSel?'700':'400', fill: isSel?PALETTE.turquoise:PALETTE.textMuted, style:'cursor:pointer;'});
+      const nameEl = el('text', {x: leftPad-6, y: y+cellH-4, 'text-anchor':'end', 'font-size':'11.5', fill:PALETTE.textMuted, style:'cursor:pointer;'});
       nameEl.textContent = r.full;
-      nameEl.addEventListener('click', ()=> setSharedProvince(r.full));
+      nameEl.addEventListener('click', ()=>{
+        gProvSelect.value = (gProvSelect.value === r.full) ? '__ALL__' : r.full;
+        gProvSelect.dispatchEvent(new Event('change'));
+      });
       svg.appendChild(nameEl);
-      if(isSel){
-        svg.appendChild(el('rect', {x: leftPad-2, y: y-1.5, width: 12*(cellW+1.5)+2, height: cellH+3,
-          fill:'none', stroke:PALETTE.turquoise, 'stroke-width':'1.6', rx:'2'}));
-      }
       r.cells.forEach((c,ci)=>{
         const v = valueOf(c);
         const x = leftPad + ci*(cellW+1.5);
@@ -2494,31 +2001,6 @@ function renderNational(){
   const keyFacilities = BUNDLE.key_facilities;
   const irMapYears = irData.years;
   const irMapYearDD = buildYearDropdown('ir-map-year-dropdown', irMapYears, [2026], ()=>renderRiskMap());
-  // Picking a province by name, for when clicking a small polygon is fiddly — same shared
-  // selection as every other click target, so it drives the whole page too.
-  const irMapProvDD = buildSingleSelectDropdown('ir-map-province-dropdown',
-    [{value:'__ALL__', label:'None — show all'}].concat(
-      [...nat.provinces].map(p=>myr.name_map[p.province]).sort((a,b)=>a.localeCompare(b)).map(n=>({value:n, label:n}))),
-    '__ALL__', (v)=> setSharedProvince(v === '__ALL__' ? '__ALL__' : v));
-
-  // On a touch device a one-finger drag inside a full-width map traps the page scroll — you get
-  // stuck on the map and can't reach the rest of the dashboard. So dragging is off on touch
-  // (pinch-zoom and the +/- control still work), and the zoom control is shown to compensate.
-  const MAP_IS_TOUCH = !!(L.Browser && L.Browser.mobile);
-  const MAP_BASE_OPTS = {
-    scrollWheelZoom: !MAP_IS_TOUCH,
-    dragging: !MAP_IS_TOUCH,
-    tap: true,
-    // Leaflet finishes a zoom animation on a transition-end callback. When a re-render tears the
-    // map down mid-animation (rapidly ticking year checkboxes does exactly that) that callback
-    // fires against destroyed panes and throws "_leaflet_pos of undefined". These maps only ever
-    // zoom via fitBounds, so the animation buys nothing — turning it off removes the whole class
-    // of error and renders faster on low-end devices.
-    zoomAnimation: false,
-    attributionControl:false,
-    zoomControl: MAP_IS_TOUCH,
-    minZoom:5, maxZoom:16
-  };
 
   // GeoJSON feature province name -> our canonical province name
   const GEO_NAME_MAP = {
@@ -2542,9 +2024,10 @@ function renderNational(){
   ];
   const CASE_BIN_COLORS = CHOROPLETH_RAMP;
   const NO_DATA_COLOR = PALETTE.grid;
+  let mapMetric = 'ir';
   let CURRENT_BINS = IR_BINS;
   function valueFor(province, year){
-    if(sharedMetric === 'ir') return irData.ir_by_province_year[province] ? (irData.ir_by_province_year[province][year] ?? 0) : 0;
+    if(mapMetric === 'ir') return irData.ir_by_province_year[province] ? (irData.ir_by_province_year[province][year] ?? 0) : 0;
     const series = myr.province_series[province];
     return (series && series.cases[String(year)]) || 0;
   }
@@ -2573,7 +2056,7 @@ function renderNational(){
   }
   function refreshMapLegend(){
     const legendEl = document.getElementById('ir-map-legend');
-    const unitNote = sharedMetric === 'ir' ? 'cases per 100,000 population' : 'case count (bins fit to the years currently shown)';
+    const unitNote = mapMetric === 'ir' ? 'cases per 100,000 population' : 'case count (bins fit to the years currently shown)';
     legendEl.innerHTML = `<div class="legend-item" style="width:100%;font-weight:700;color:var(--text-secondary);font-size:11px;">${unitNote}</div>`
       + CURRENT_BINS.map(b=>`<div class="legend-item"><span class="dot" style="background:${b.color};border:1px solid ${PALETTE.grid};border-radius:3px;width:14px;height:14px;"></span> ${b.label}</div>`).join('')
       + `<div class="legend-item"><span style="color:${PALETTE.green};font-size:16px;">▲</span> Provincial Referral Hospital</div>`
@@ -2581,45 +2064,27 @@ function renderNational(){
   }
   window._GEO_NAME_MAP = GEO_NAME_MAP;
   window._irColorFn = irColor;
-  // The PNG export draws its own map with Canvas 2D (it can't screenshot Leaflet's transformed
-  // panes reliably), so it needs the SAME value lookup the on-screen map uses. Reading the IR
-  // table directly here was the bug: in Cases mode the export coloured IR values against
-  // case-count bins, so every province fell in the lowest bin and the map came out blank.
-  window._mapValueFor = (province, year) => valueFor(province, String(year));
-  window._mapMetric = () => sharedMetric;
   window._IR_BINS = CURRENT_BINS;
   refreshMapLegend();
 
   let activeMaps = []; // Leaflet instances currently on screen — destroyed and rebuilt on every render
-  // Every render tears down the previous maps, but the deferred fitBounds/invalidateSize calls
-  // queued by that render still fire afterwards and blow up on the destroyed instance
-  // (_leaflet_pos of undefined). Ticking a token per render lets those stale callbacks bail out.
-  let riskMapRenderToken = 0;
   // Provinces small/thin enough on the map that an in-place label would be unreadable — these
   // get a numbered badge instead, with the actual values listed in a footnote below the map.
   const SMALL_PROVINCES = ['Pailin', 'Kandal', 'Phnom Penh', 'Preah Sihanouk', 'Kep'];
-  window._SMALL_PROVINCES = SMALL_PROVINCES;
   function drawChoropleth(map, year, {labels, hospitals}){
     const smallProvinceEntries = [];
-    const unit = sharedMetric === 'ir' ? ' per 100,000' : ' cases';
-    const metricLabel = sharedMetric === 'ir' ? 'IR' : 'Cases';
+    const unit = mapMetric === 'ir' ? ' per 100,000' : ' cases';
+    const metricLabel = mapMetric === 'ir' ? 'IR' : 'Cases';
     const geoLayer = L.geoJSON(geoData, {
       style: feature => {
         const provName = GEO_NAME_MAP[feature.properties.name];
         const v = provName ? valueFor(provName, year) : 0;
-        const isSel = provName && provName === selectedProvinceOrNull();
-        return {
-          fillColor: irColor(v),
-          fillOpacity: isSel ? 0.95 : (selectedProvinceOrNull() ? 0.42 : 0.85),
-          color: isSel ? PALETTE.gold : PALETTE.textBody,
-          weight: isSel ? 3.2 : (labels?1.5:1)
-        };
+        return { fillColor: irColor(v), fillOpacity: 0.85, color: PALETTE.textBody, weight: labels?1.5:1 };
       },
       onEachFeature: (feature, layer) => {
         const provName = GEO_NAME_MAP[feature.properties.name] || feature.properties.name;
         const v = provName ? valueFor(provName, year) : null;
-        const vLabel = v!=null ? (sharedMetric==='ir' ? v.toFixed(1) : fmt(v)) : 'n/a';
-        layer.on('click', ()=> setSharedProvince(provName));
+        const vLabel = v!=null ? (mapMetric==='ir' ? v.toFixed(1) : fmt(v)) : 'n/a';
         if(labels){
           if(SMALL_PROVINCES.includes(provName)){
             smallProvinceEntries.push({ province: provName, irLabel: vLabel, layer });
@@ -2632,7 +2097,7 @@ function renderNational(){
             });
           }
         } else {
-          layer.bindTooltip(`<b>${provName}</b>: ${vLabel}${sharedMetric==='ir'?unit:''}`, {sticky:true});
+          layer.bindTooltip(`<b>${provName}</b>: ${vLabel}${mapMetric==='ir'?unit:''}`, {sticky:true});
         }
       }
     }).addTo(map);
@@ -2671,7 +2136,7 @@ function renderNational(){
       const northArrow = L.control({position:'topright'});
       northArrow.onAdd = () => {
         const div = L.DomUtil.create('div');
-        div.style.cssText = 'background:rgba(255,255,255,.85);border-radius:6px;padding:4px 8px;text-align:center;font-weight:800;color:'+PALETTE.textBody+';font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.15);';
+        div.style.cssText = 'background:rgba(255,255,255,.85);border-radius:6px;padding:4px 8px;text-align:center;font-weight:800;color:${PALETTE.textBody};font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.15);';
         div.innerHTML = 'N<br><span style="font-size:15px;">↑</span>';
         return div;
       };
@@ -2694,15 +2159,14 @@ function renderNational(){
   function renderRiskMap(){
     const selectedYears = irMapYearDD.getSelected();
     const frame = document.getElementById('ir-risk-map-frame');
-    const renderToken = ++riskMapRenderToken;
-    activeMaps.forEach(m=>{ try{ m.stop(); }catch(e){} m.remove(); });
+    activeMaps.forEach(m=>m.remove());
     window._riskMapFootnote = '';
     activeMaps = [];
     frame.innerHTML = '';
 
     // Bins depend on the metric and (for cases) the years currently in view, so recompute here
     // before any province gets colored.
-    CURRENT_BINS = sharedMetric === 'ir' ? IR_BINS : computeCaseBins(selectedYears.length ? selectedYears : [2026]);
+    CURRENT_BINS = mapMetric === 'ir' ? IR_BINS : computeCaseBins(selectedYears.length ? selectedYears : [2026]);
     window._IR_BINS = CURRENT_BINS;
     refreshMapLegend();
 
@@ -2718,49 +2182,33 @@ function renderNational(){
       div.id = 'ir-risk-map-single';
       div.style.cssText = 'width:100%;height:100%;';
       frame.appendChild(div);
-      // zoomSnap:0 lets fitBounds land on a fractional zoom. With Leaflet's default integer
-      // zoom steps a small phone container drops a whole level and the country ends up a
-      // postage stamp in the middle of the frame. Permanent province labels are also dropped
-      // on a phone — 25 of them overlap into an unreadable mess at that width — so the map
-      // is a clean choropleth you tap for a value instead.
-      const narrowMap = NARROW();
-      frame.style.height = (narrowMap ? 380 : 560) + 'px';
-      const map = L.map(div, Object.assign({}, MAP_BASE_OPTS, {zoomSnap: narrowMap ? 0 : 1})).setView([12.6, 104.9], 7);
-      const layer = drawChoropleth(map, String(selectedYears[0]), {labels: !narrowMap, hospitals:true});
+      const map = L.map(div, {scrollWheelZoom:true, attributionControl:false, zoomControl:false, minZoom:5, maxZoom:16}).setView([12.6, 104.9], 7);
+      const layer = drawChoropleth(map, String(selectedYears[0]), {labels:true, hospitals:true});
       activeMaps.push(map);
       window._riskMapFootnote = map._smallProvinceFootnote || '';
-      requestAnimationFrame(()=>{ if(renderToken!==riskMapRenderToken) return; map.invalidateSize(); map.fitBounds(layer.getBounds(), {padding: narrowMap?[8,8]:[60,60]}); });
+      requestAnimationFrame(()=>{ map.invalidateSize(); map.fitBounds(layer.getBounds(), {padding:[60,60]}); });
     } else {
       // Multiple years: small-multiples grid inside the same frame — more years = smaller maps
       const n = selectedYears.length;
-      const cols = NARROW() ? Math.min(2, n) : Math.ceil(Math.sqrt(n));
+      const cols = Math.ceil(Math.sqrt(n));
       const rows = Math.ceil(n / cols);
-      // The frame used to be a fixed 560px however many years were selected, so eight years meant
-      // eight postage stamps. Height is now derived from the cell width and Cambodia's own
-      // bounding-box aspect (~1.08 wide), so each small multiple stays roughly square and the
-      // card grows downward instead of shrinking the maps.
-      const GAP = 6, PAD = 12;
-      const frameW = frame.clientWidth || 900;
-      const cellW = (frameW - PAD - GAP*(cols-1)) / cols;
-      const cellH = Math.min(420, Math.max(150, cellW * 0.9));
-      frame.style.height = Math.round(rows*cellH + GAP*(rows-1) + PAD) + 'px';
       const grid = document.createElement('div');
-      grid.style.cssText = `display:grid;grid-template-columns:repeat(${cols},1fr);grid-template-rows:repeat(${rows},1fr);gap:${GAP}px;width:100%;height:100%;padding:${PAD/2}px;box-sizing:border-box;`;
+      grid.style.cssText = `display:grid;grid-template-columns:repeat(${cols},1fr);grid-template-rows:repeat(${rows},1fr);gap:6px;width:100%;height:100%;padding:6px;box-sizing:border-box;`;
       frame.appendChild(grid);
       selectedYears.forEach(y=>{
         const cell = document.createElement('div');
         cell.style.cssText = 'position:relative;background:'+PALETTE.surface+';border-radius:6px;overflow:hidden;border:1px solid var(--border);';
         const title = document.createElement('div');
         title.textContent = y===2026 ? '2026 (YTD)' : String(y);
-        title.style.cssText = 'position:absolute;top:4px;left:6px;z-index:1000;font-size:11px;font-weight:700;color:'+PALETTE.darkBlue+';background:rgba(255,255,255,.85);padding:1px 6px;border-radius:4px;';
+        title.style.cssText = 'position:absolute;top:4px;left:6px;z-index:1000;font-size:11px;font-weight:700;color:${PALETTE.darkBlue};background:rgba(255,255,255,.85);padding:1px 6px;border-radius:4px;';
         const mapDiv = document.createElement('div');
         mapDiv.style.cssText = 'width:100%;height:100%;';
         cell.appendChild(mapDiv); cell.appendChild(title);
         grid.appendChild(cell);
-        const map = L.map(mapDiv, Object.assign({}, MAP_BASE_OPTS, {zoomControl:false, zoomSnap: 0})).setView([12.6, 104.9], 6);
+        const map = L.map(mapDiv, {scrollWheelZoom:true, attributionControl:false, zoomControl:false, minZoom:5, maxZoom:16}).setView([12.6, 104.9], 6);
         const layer = drawChoropleth(map, String(y), {labels:false, hospitals:n<=2});
         activeMaps.push(map);
-        requestAnimationFrame(()=>{ if(renderToken!==riskMapRenderToken) return; map.invalidateSize(); map.fitBounds(layer.getBounds(), {padding:[6,6]}); });
+        requestAnimationFrame(()=>{ map.invalidateSize(); map.fitBounds(layer.getBounds(), {padding:[4,4]}); });
       });
     }
 
@@ -2771,24 +2219,27 @@ function renderNational(){
         .sort((a,b)=>b.v-a.v);
       const top = entries[0];
       const yearLabel = y===2026 ? '2026 (YTD)' : y;
-      const vLabel = sharedMetric==='ir' ? top.v.toFixed(1) : fmt(top.v);
+      const vLabel = mapMetric==='ir' ? top.v.toFixed(1) : fmt(top.v);
       return top ? `${yearLabel}: highest ${top.province} (${vLabel})` : '';
     }).filter(Boolean);
     const footnote = window._riskMapFootnote ? ` Numbered on the map because too small to label in place: ${window._riskMapFootnote}.` : '';
-    const metricLabel = sharedMetric === 'ir' ? 'Highest IR per 100,000' : 'Highest case count';
+    const metricLabel = mapMetric === 'ir' ? 'Highest IR per 100,000' : 'Highest case count';
     document.getElementById('ir-map-note').textContent = metricLabel + ' — ' + parts.join(' · ') + '.' + footnote;
   }
   document.querySelectorAll('#ir-map-metric-toggle .seg-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ setSharedMetric(btn.dataset.metric); });
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#ir-map-metric-toggle .seg-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      mapMetric = btn.dataset.metric;
+      renderRiskMap();
+    });
   });
   window._renderRiskMap = renderRiskMap;
   document.getElementById('ir-map-download-btn').addEventListener('click', ()=>{
     const selectedYears = irMapYearDD.getSelected();
     const yearsLabel = selectedYears.map(y=>y===2026?'2026(YTD)':y).join('_');
-    const metricSlug = sharedMetric==='cases' ? 'cases' : 'ir';
-    const metricTitle = sharedMetric==='cases' ? 'Cases' : 'Incidence Rate per 100,000';
-    downloadMapImage(`dengue_risk_map_${metricSlug}_${yearsLabel}`,
-      `Dengue Risk Map by Province — ${metricTitle}`, document.getElementById('ir-map-note').textContent, selectedYears);
+    downloadMapImage(`dengue_risk_map_${yearsLabel}`,
+      'Dengue Risk Map by Province', document.getElementById('ir-map-note').textContent, selectedYears);
   });
   window._riskMapGetInstances = () => activeMaps;
 
@@ -2832,41 +2283,30 @@ function renderNational(){
     if(curr<prev) return ` <span style="color:var(--positive);font-size:10px;" title="Down vs previous year">▼</span>`;
     return ` <span style="color:var(--text-secondary);font-size:10px;" title="No change">▬</span>`;
   }
-  // Once the shared range is in play the table shows only the years it covers — a nine-column
-  // table is not the answer to "what happened in 2024-2025".
-  function myrYears(){
-    if(!globalFilterTouched) return years;
-    const ys = yearsInGlobalRange();
-    const f = years.filter(y => ys.includes(y));
-    return f.length ? f : years;
-  }
   function rebuildMultiYearHeader(){
-    head.innerHTML = '<th data-k="province">Province</th>' + myrYears().map(y=>{
+    head.innerHTML = '<th data-k="province">Province</th>' + years.map(y=>{
       if(y===2026) return `<th data-k="${y}">2026 (YTD)</th>`;
       const label = myrMode==='ytd' ? `${y} (Jan-${MONTH_LABELS[lastReported2026-1]})` : String(y);
       return `<th data-k="${y}">${label}</th>`;
     }).join('');
   }
   function drawMultiYear(rows){
-    const shownYears = myrYears();
-    const selProv = selectedProvinceOrNull();
     const maxByYear = {};
-    shownYears.forEach(y=> maxByYear[y] = Math.max(...rows.map(r=>r[y]), 1));
+    years.forEach(y=> maxByYear[y] = Math.max(...rows.map(r=>r[y]), 1));
     mtbody.innerHTML = rows.map(r=>{
-      const cells = shownYears.map((y,idx)=>{
+      const cells = years.map((y,idx)=>{
         const v = r[y];
-        const prevY = shownYears[idx-1];
+        const prevY = years[idx-1];
         const arrow = idx>0 ? trendArrow(v, r[prevY]) : '';
         const intensity = Math.min(v / maxByYear[y], 1);
         const bg = hexToRgba(PALETTE.turquoise, +(intensity*0.55).toFixed(2));
         return `<td style="background:${bg}">${fmt(v)}${arrow}</td>`;
       }).join('');
-      const cls = r.province===selProv ? ' class="row-selected"' : '';
-      return `<tr${cls} data-prov="${r.province}"><td>${r.province}</td>${cells}</tr>`;
+      return `<tr><td>${r.province}</td>${cells}</tr>`;
     }).join('');
-    const totalCells = shownYears.map((y,idx)=>{
+    const totalCells = years.map((y,idx)=>{
       const totalV = rows.reduce((sum,r)=>sum+r[y],0);
-      const prevY = shownYears[idx-1];
+      const prevY = years[idx-1];
       const prevTotal = idx>0 ? rows.reduce((sum,r)=>sum+r[prevY],0) : undefined;
       const arrow = idx>0 ? trendArrow(totalV, prevTotal) : '';
       return `<td>${fmt(totalV)}${arrow}</td>`;
@@ -2897,17 +2337,11 @@ function renderNational(){
     });
   });
 
-  // Highlight, don't filter: a one-row multi-year table loses the whole point of the comparison,
-  // and leaving the other provinces on screen is what makes row-click usable as a selector.
   function applyGlobalProvinceToMultiYear(){
-    rebuildMultiYearHeader();
-    rebindMultiYearHeaderClicks();
-    drawMultiYear(provRows);
+    const v = gProvSelect.value; // full province name, matches provRows[].province directly
+    drawMultiYear(v==='__ALL__' ? provRows : provRows.filter(r=>r.province===v));
   }
-  mtbody.addEventListener('click', (e)=>{
-    const tr = e.target.closest('tr[data-prov]');
-    if(tr) setSharedProvince(tr.dataset.prov);
-  });
+  gProvSelect.addEventListener('change', applyGlobalProvinceToMultiYear);
   applyGlobalProvinceToMultiYear();
 
   const tbody = document.querySelector('#tbl-province tbody');
@@ -2929,8 +2363,7 @@ function renderNational(){
     };
   }).sort((a,b)=>b.cases2026-a.cases2026);
   function drawProvTable(rows){
-    const selAbbrev = selectedProvinceOrNull() ? abbrevFor(selectedProvinceOrNull()) : null;
-    tbody.innerHTML = rows.map(p=>`<tr${p.province===selAbbrev?' class="row-selected"':''} data-prov="${p.province}"><td>${p.province}</td><td>${fmt(p.cases2026)}</td><td>${fmt(p.cases2025)}</td><td>${p.ir2026==null?'—':p.ir2026}</td><td>${p.ir2025==null?'—':p.ir2025}</td><td>${fmt(p.deaths2026)}</td><td>${p.cfr2026}</td><td>${p.cfr2025}</td></tr>`).join('');
+    tbody.innerHTML = rows.map(p=>`<tr><td>${p.province}</td><td>${fmt(p.cases2026)}</td><td>${fmt(p.cases2025)}</td><td>${p.ir2026==null?'—':p.ir2026}</td><td>${p.ir2025==null?'—':p.ir2025}</td><td>${fmt(p.deaths2026)}</td><td>${p.cfr2026}</td><td>${p.cfr2025}</td></tr>`).join('');
     const totCases2026 = rows.reduce((s,p)=>s+p.cases2026,0);
     const totCases2025 = rows.reduce((s,p)=>s+p.cases2025,0);
     const totDeaths2026 = rows.reduce((s,p)=>s+p.deaths2026,0);
@@ -2952,22 +2385,14 @@ function renderNational(){
     });
   });
 
-  function applyGlobalProvinceToProvTable(){ drawProvTable(sortedProv); }
-  tbody.addEventListener('click', (e)=>{
-    const tr = e.target.closest('tr[data-prov]');
-    if(!tr) return;
-    const full = myr.name_map[tr.dataset.prov];
-    if(full) setSharedProvince(full);
-  });
+  function applyGlobalProvinceToProvTable(){
+    const vFull = gProvSelect.value; // full name -> convert to abbreviated code used in sortedProv[].province
+    if(vFull === '__ALL__'){ drawProvTable(sortedProv); return; }
+    const vAbbrev = abbrevFor(vFull);
+    drawProvTable(sortedProv.filter(p=>p.province===vAbbrev));
+  }
+  gProvSelect.addEventListener('change', applyGlobalProvinceToProvTable);
   applyGlobalProvinceToProvTable();
-
-  // Everything is built — enable the cross-filter fan-out and paint the status bar. The initial
-  // per-card year defaults are deliberately left alone here: propagating the default Jan-Aug 2026
-  // range on load would collapse N4's three-year overlay to a single line before the user has
-  // asked for anything.
-  crossFilterReady = true;
-  syncMetricToggleUI();
-  renderFilterChips();
 }
 
 // ---- BATTAMBANG ----
@@ -2998,10 +2423,6 @@ function drawStaticMapToCanvas(ctx, width, height, year, opts){
   const keyFacilities = BUNDLE.key_facilities;
   const GEO_NAME_MAP = window._GEO_NAME_MAP;
   const irColorFn = window._irColorFn;
-  const SMALL_PROVINCES = window._SMALL_PROVINCES || [];
-  const exportMetric = window._mapMetric ? window._mapMetric() : 'ir';
-  const valueForExport = (prov, yr) => window._mapValueFor ? window._mapValueFor(prov, yr) : 0;
-  const valueLabel = v => v==null ? 'n/a' : (exportMetric==='ir' ? 'IR: '+v.toFixed(1) : 'Cases: '+v.toLocaleString());
   const bounds = window._geoBoundsCache || (window._geoBoundsCache = computeGeoBounds(geoData));
   const {minLng,maxLng,minLat,maxLat} = bounds;
   const pad = opts.padding || 20;
@@ -3016,7 +2437,7 @@ function drawStaticMapToCanvas(ctx, width, height, year, opts){
 
   geoData.features.forEach(f=>{
     const provName = GEO_NAME_MAP[f.properties.name] || f.properties.name;
-    const ir = valueForExport(provName, year);
+    const ir = irData.ir_by_province_year[provName] ? (irData.ir_by_province_year[provName][String(year)] ?? 0) : 0;
     const geom = f.geometry;
     const polys = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
     polys.forEach(poly=>{
@@ -3037,10 +2458,9 @@ function drawStaticMapToCanvas(ctx, width, height, year, opts){
   });
 
   if(opts.labels){
-    const smallEntries = [];
     geoData.features.forEach(f=>{
       const provName = GEO_NAME_MAP[f.properties.name] || f.properties.name;
-      const v = valueForExport(provName, year);
+      const ir = irData.ir_by_province_year[provName] ? (irData.ir_by_province_year[provName][String(year)] ?? null) : null;
       const geom = f.geometry;
       const polys = geom.type==='Polygon' ? [geom.coordinates] : geom.coordinates;
       let largest = polys[0][0];
@@ -3048,23 +2468,12 @@ function drawStaticMapToCanvas(ctx, width, height, year, opts){
       let sx=0, sy=0;
       largest.forEach(([lng,lat])=>{ const [x,y]=project(lng,lat); sx+=x; sy+=y; });
       const cx = sx/largest.length, cy = sy/largest.length;
-      // Same five provinces the on-screen map numbers instead of labelling — without this the
-      // export crammed Pailin / Kandal / Phnom Penh / Kep on top of each other, and the numbered
-      // footnote underneath referred to badges that were never drawn.
-      if(SMALL_PROVINCES.includes(provName)){ smallEntries.push({cx, cy}); return; }
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = 'bold 11px Arial'; ctx.strokeStyle = PALETTE.surface; ctx.lineWidth = 3; ctx.fillStyle = PALETTE.textBody;
       ctx.strokeText(provName, cx, cy-6); ctx.fillText(provName, cx, cy-6);
       ctx.font = '10px Arial';
-      ctx.strokeText(valueLabel(v), cx, cy+7); ctx.fillText(valueLabel(v), cx, cy+7);
-    });
-    smallEntries.forEach((e,i)=>{
-      ctx.beginPath(); ctx.arc(e.cx, e.cy, 10, 0, Math.PI*2);
-      ctx.fillStyle = PALETTE.darkBlue; ctx.fill();
-      ctx.strokeStyle = PALETTE.surface; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = PALETTE.surface; ctx.font = 'bold 11px Arial';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(String(i+1), e.cx, e.cy);
+      const irLabel = ir!=null ? 'IR: '+ir.toFixed(1) : 'IR: n/a';
+      ctx.strokeText(irLabel, cx, cy+7); ctx.fillText(irLabel, cx, cy+7);
     });
   }
   if(opts.hospitals){
@@ -3085,14 +2494,8 @@ function drawStaticMapToCanvas(ctx, width, height, year, opts){
 }
 function drawMapLegend(ctx, x, y, width){
   const IR_BINS = window._IR_BINS;
-  const unitNote = (window._mapMetric && window._mapMetric()==='cases')
-    ? 'case count (bins fit to the years shown)' : 'cases per 100,000 population';
   const swatchSize = 16, gap = 10, itemPad = 8;
-  ctx.fillStyle = PALETTE.textMuted; ctx.font = 'bold 12px Arial';
-  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-  ctx.fillText(unitNote, x, y + 6);
-  y += 20;
-  ctx.font = '13px Arial';
+  ctx.font = '13px Arial'; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   let cx = x, cy = y + swatchSize/2;
   const items = IR_BINS.map(b=>({type:'swatch', color:b.color, label:b.label}))
     .concat([{type:'symbol', symbol:'▲', color:PALETTE.green, label:'Provincial Referral Hospital'},
@@ -3123,7 +2526,7 @@ function downloadMapImage(filename, titleText, footerText, selectedYears){
   const cols = selectedYears.length===1 ? 1 : Math.ceil(Math.sqrt(selectedYears.length));
   const rows = selectedYears.length===1 ? 1 : Math.ceil(selectedYears.length/cols);
   const titleHeight = 46;
-  const legendHeight = 92; // unit line + two wrapped rows of swatches
+  const legendHeight = 70; // reserve two rows' worth; drawMapLegend wraps as needed within this
   const footerHeight = footerText ? 30 : 0;
   const tmp = document.createElement('canvas');
   tmp.width = cellW*cols;
@@ -3226,7 +2629,7 @@ function downloadTableCSV(tableId, filename, titleText, subtitleText){
   let header = `"${(titleText || filename).replace(/"/g,'""')}"\r\n`;
   if(subtitleText) header += `"${subtitleText.replace(/"/g,'""')}"\r\n`;
   const csv = header + dataCsv;
-  const blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = filename + '.csv';
   document.body.appendChild(a); a.click(); a.remove();
