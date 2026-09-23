@@ -41,6 +41,62 @@ before pushing to GitHub.
    ```
 5. Open that URL — the dashboard should load exactly as it does locally.
 
+## Entering the weekly figures
+
+The dashboard's **W1 Weekly Epidemic Curve** is fed by the
+`National_Weekly_Entry` sheet in `Dengue_Master_Data_Entry.xlsx`. Weeks 1-53
+of 2026 are already laid out for "All Cambodia", so each time a bulletin lands
+you only fill in two cells:
+
+1. Find that week's row and type **Cases** and **Deaths**.
+2. **Leave a week blank until it is reported — don't type 0.** A blank reads as
+   "not reported yet" and the curve simply ends at the last reported week; a 0
+   reads as "reported, and there were no cases" and draws a bar at the floor.
+3. Check `QA_Checklist` (the weekly checks are rows 13-16), then run
+   `update_data` as usual.
+
+Until the first week is filled in, W1 shows a "no weekly data entered yet"
+message instead of an empty axis — that is the expected state, not an error.
+
+The reporting period in the page header updates itself from the data — you
+never edit it. Once weekly rows exist it reads "DHF Weekly Report — Week N,
+YYYY (week ending D Mon YYYY)" from the newest week entered; with no weekly
+rows it falls back to naming the last month the monthly sheet reported, rather
+than claiming a week the file can't back up.
+
+### The endemic / epidemic lines on W1
+
+W1 sits directly under N1 and asks the same outbreak question at weekly
+resolution. Its **Show:** checkboxes turn three overlays on and off:
+
+- **Deaths** — deaths that week, on the right-hand axis.
+- **Endemic (historical mean)** — the average cases for that ISO week across
+  earlier years.
+- **Epidemic threshold (mean + 2SD)** — the same construction N1 uses. A week
+  above it is drawn as a **red bar**.
+
+The two channel lines are computed per ISO week from **earlier years of weekly
+entry only**. They are deliberately not derived from N1's monthly baseline —
+spreading a monthly average across four or five weeks would invent a weekly
+shape the bulletin never reported.
+
+So those two checkboxes start **greyed out**, and stay that way until the sheet
+holds at least two earlier years of weekly data (a standard deviation needs two
+points). Hover a greyed-out checkbox and it tells you which years it does have.
+With only two or three prior years the caption also warns that the band is wide
+and unstable; it firms up as more years accumulate.
+
+Province-level weekly rows are optional. The spare rows below the 2026 block
+accept a province name instead of "All Cambodia", and W1 will follow the
+dashboard's province filter for whichever provinces you fill in; for provinces
+with no weekly rows it falls back to the national curve and says so on the
+chart. Weeks are ISO weeks (Monday-Sunday) and the dates are pre-filled —
+overwrite them if the NDCP bulletin numbers its weeks differently.
+
+Weekly and monthly figures are entered separately and won't always reconcile
+exactly, because the bulletin revises earlier weeks as late reports arrive.
+The chart says so in its own caption.
+
 ## Updating the data later
 
 You don't need to touch `index.html` again for a routine data refresh —

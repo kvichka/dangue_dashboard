@@ -12,6 +12,14 @@ It needs two files in the SAME folder as this script:
     - Dengue_Master_Data_Entry.xlsx   (your data — edit this every week)
     - static_assets.json              (rarely-changing reference data — don't touch)
 
+WEEKLY DATA:
+  The workbook's National_Weekly_Entry sheet has 2026 weeks 1-53 already laid out
+  for "All Cambodia" — fill in Cases and Deaths as each bulletin lands and the
+  dashboard's weekly epidemic curve (W1) fills in with it. A week left blank is
+  read as "not reported yet" and skipped, not as zero, so the curve shows a gap
+  rather than a dip. Province-level weekly rows are optional; add them and the
+  chart will follow the province filter for whichever provinces you fill in.
+
 It writes: Data/dengue-data.json  (creating the Data folder if it doesn't exist)
 
 index.html never needs to change for a routine data update — only this JSON
@@ -296,6 +304,56 @@ national = {"provinces": national_provinces,
                       "cfr2026": round(tot_d/tot_c*100,3) if tot_c else 0, "cfr2025": round(tot_d5/tot_c5*100,3) if tot_c5 else 0},
             "age_cases": age_cases, "diag_age": diag_age}
 
+# ---- weekly: National_Weekly_Entry, one row per epi week (long format, like the other entry
+# sheets). "All Cambodia" rows feed the national weekly curve; province rows are optional and let
+# the same chart follow the province filter. A row whose Cases AND Deaths cells are both blank is a
+# week that has been laid out but not reported yet — it is skipped rather than read as zero, so the
+# chart leaves a gap instead of plotting a dip that never happened.
+# Older workbooks predate this sheet: the bundle then carries an empty weekly block and the
+# dashboard shows the chart's "no weekly data yet" state instead of an empty axis. ----
+def _date_str(v):
+    """Week start/end as plain YYYY-MM-DD. Excel hands these back as datetimes; a workbook where
+    somebody retyped them by hand hands back a string, which we pass through untouched."""
+    if v is None:
+        return None
+    if isinstance(v, (datetime.datetime, datetime.date)):
+        return v.strftime("%Y-%m-%d")
+    return str(v).strip() or None
+
+weekly = {"national": {}, "provinces": {}, "week_convention": "ISO weeks (Monday-Sunday)"}
+if "National_Weekly_Entry" in wb.sheetnames:
+    ws_wk = wb["National_Weekly_Entry"]
+    weekly_rows_read = 0
+    for r in range(5, ws_wk.max_row + 1):
+        scope = ws_wk.cell(row=r, column=1).value
+        year = ws_wk.cell(row=r, column=2).value
+        week = ws_wk.cell(row=r, column=3).value
+        if not scope or not year or not week:
+            continue                      # spare row, or the footnote line under the table
+        cases = ws_wk.cell(row=r, column=6).value
+        deaths = ws_wk.cell(row=r, column=7).value
+        if cases is None and deaths is None:
+            continue                      # laid out but not yet reported
+        rec = {"week": int(week), "cases": int(cases or 0), "deaths": int(deaths or 0),
+               "start": _date_str(ws_wk.cell(row=r, column=4).value),
+               "end": _date_str(ws_wk.cell(row=r, column=5).value)}
+        y = str(int(year))
+        if str(scope).strip() == "All Cambodia":
+            weekly["national"].setdefault(y, []).append(rec)
+        else:
+            weekly["provinces"].setdefault(str(scope).strip(), {}).setdefault(y, []).append(rec)
+        weekly_rows_read += 1
+    for series in list(weekly["national"].values()) + [s for prov in weekly["provinces"].values() for s in prov.values()]:
+        series.sort(key=lambda x: x["week"])
+    if weekly_rows_read:
+        nat_years = ", ".join(f"{y} ({len(v)} wk)" for y, v in sorted(weekly["national"].items()))
+        log(f"Loaded {weekly_rows_read} weekly rows from National_Weekly_Entry — national: {nat_years or 'none'}"
+            + (f"; {len(weekly['provinces'])} province(s) with weekly detail." if weekly["provinces"] else "."))
+    else:
+        log("National_Weekly_Entry is empty so far — the weekly chart will show its 'no data yet' state.")
+else:
+    log("WARNING: National_Weekly_Entry sheet not found — weekly chart will show its 'no data yet' state.")
+
 log(f"National YTD ({CURRENT_YEAR} through {MONTH_ABBR[latest_month_num-1]}): {tot_c} cases vs {tot_c5} same period {prev_year}.")
 
 # ---- ir_heatmap: IR by province by year, using real population ----
@@ -345,6 +403,7 @@ bundle = {
     "key_facilities": static["key_facilities"],               # static
     "cambodia_geo": static["cambodia_geo"],                   # static
     "epidemic_channel": epidemic_channel,
+    "weekly": weekly,
     "full_population_2018_2026": full_population,
 }
 

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -f inspect.py)",
+      "Bash(mv /dev/null /dev/null)",
+      "Bash(cat)",
+      "Bash(python xl_probe.py)"
+    ]
+  }
+}

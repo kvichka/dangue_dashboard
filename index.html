@@ -265,7 +265,9 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
   <header class="top">
     <div>
       <h1>Dengue Situation Dashboard</h1>
-      <p>National Surveillance — DHF Weekly Report — Week 34, 2026</p>
+      <!-- Reporting period is filled in from the data on load (see setHeaderPeriod). The static
+           text stays deliberately period-free so a slow load can't flash a stale week number. -->
+      <p>National Surveillance — DHF Report</p>
     </div>
   </header>
 
@@ -287,7 +289,7 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
         <label>Month</label>
         <select id="global-to-month"></select>
       </div>
-      <div class="note" style="margin-top:4px;">Province, date range and metric are one shared selection — set them here, or click a province on any chart, map, heatmap row or table row, and the whole page follows. Each chart honours the range at its own resolution: month charts (N4, L2) clip to the month window, year charts (N5, N6, N9, N11, N12) switch to the years it covers. Province-comparison charts highlight the selection rather than filtering to it, so you keep the ranking context. <b>Two exceptions:</b> N1 Outbreak Signal stays national by construction (its threshold is built from the national 2018-2025 baseline), and N7/N8 age charts are national only — the source carries no age split by province.</div>
+      <div class="note" style="margin-top:4px;">Province, date range and metric are one shared selection — set them here, or click a province on any chart, map, heatmap row or table row, and the whole page follows. Each chart honours the range at its own resolution: month charts (N4, L2) clip to the month window, year charts (N5, N6, N9, N11, N12) switch to the years it covers. Province-comparison charts highlight the selection rather than filtering to it, so you keep the ranking context. <b>Three exceptions:</b> N1 Outbreak Signal stays national by construction (its threshold is built from the national 2018-2025 baseline), N7/N8 age charts are national only — the source carries no age split by province — and W1 Weekly Epidemic Curve has its own year picker rather than following the month window, because weekly entry is national by default and a part-year window would cut the curve mid-season.</div>
     </div>
     <div id="active-filter-bar" class="chipbar"></div>
     <div class="note mobile-only" style="margin:-4px 0 10px;color:var(--text-secondary);">Tap any KPI card to see how it was calculated. Wide tables and the month heatmap scroll sideways.</div>
@@ -395,6 +397,25 @@ tr.row-selected td{background:rgba(17,121,150,0.10) !important;font-weight:700;}
         <div class="chart-box" style="height:340px;position:relative;"><canvas id="chart-epidemic-channel"></canvas></div>
         <div class="legend-box" id="epi-legend" style="margin-top:6px;"></div>
         <div class="note chart-note" id="epidemic-channel-note" style="margin-top:8px;"></div>
+      </div>
+      <div class="card" style="margin-bottom:var(--gap);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;">
+          <h3 id="weekly-chart-title"><span class="vno">W1</span>Weekly Epidemic Curve — Cases &amp; Deaths by Epi Week</h3>
+          <div class="filter-row" id="weekly-year-row" style="margin:0;">
+            <label>Year:</label>
+            <select id="weekly-year-select"></select>
+          </div>
+        </div>
+        <div class="note">The same outbreak question as N1 above, asked at the bulletin's own weekly resolution instead of by month — one bar per epidemiological week, entered week by week in <span class="mono">National_Weekly_Entry</span>. Bars = cases that week; a bar turns red when it clears the epidemic threshold. The endemic mean and the mean + 2SD threshold are computed per ISO week from the <i>earlier years of weekly entry</i>, not borrowed from N1's monthly baseline, so they appear only once there are at least two earlier years to build them from — until then those two checkboxes stay greyed out. Weeks not yet reported are left off the axis entirely rather than drawn as zero, so the curve ends at the last reported week instead of dropping to the floor. Weeks are ISO weeks, Monday to Sunday — hover a bar for its exact dates.</div>
+        <div class="filter-row" id="weekly-toggle-row" style="flex-wrap:wrap;">
+          <label>Show:</label>
+          <label style="display:flex;align-items:center;gap:4px;font-weight:400;"><input type="checkbox" id="weekly-show-deaths" checked> Deaths</label>
+          <label style="display:flex;align-items:center;gap:4px;font-weight:400;" id="weekly-endemic-label"><input type="checkbox" id="weekly-show-endemic" checked> Endemic (historical mean)</label>
+          <label style="display:flex;align-items:center;gap:4px;font-weight:400;" id="weekly-epidemic-label"><input type="checkbox" id="weekly-show-epidemic" checked> Epidemic threshold (mean + 2SD)</label>
+        </div>
+        <div class="chart-box" id="weekly-chart-box" style="height:360px;"><canvas id="chart-weekly"></canvas></div>
+        <div class="note chart-note" id="weekly-note" style="margin-top:8px;"></div>
+        <div id="weekly-empty" style="display:none;padding:26px 18px;text-align:center;background:var(--surface-alt);border:1px dashed var(--grid);border-radius:var(--radius);color:var(--text-secondary);font-size:13px;line-height:1.7;"></div>
       </div>
       <div class="caveat"><b>Two different "2025" numbers appear on this page — they are not the same thing.</b> Charts labeled "YTD" compare 2026 to the <i>same reporting week</i> in 2025 (weekly DHF bulletin). The charts above and the Multi-Year table (Map & Table tab) instead use <i>full calendar-year</i> 2018–2025 totals from the historical line-list.</div>
       <div class="card" style="margin-bottom:var(--gap);">
@@ -880,6 +901,35 @@ function renderNational(){
   })();
   gFromYear.value = 2026; gFromMonth.value = 1;
   gToYear.value = 2026; gToMonth.value = lastReported2026;
+
+  // ---- Header reporting period — derived, never typed ----
+  // This line used to be hard-coded ("Week 27, 2026") and had already drifted out of step with the
+  // data underneath it, which is the worst thing a vintage stamp can do: it is the one line on the
+  // page a reader trusts to say how current everything else is. It now reads off the data itself.
+  // Weekly entry is the finest resolution the bulletin publishes, so it wins when it exists; with
+  // no weekly rows yet the header names the last month that reported instead, because claiming a
+  // week number the file cannot back up is exactly the failure being fixed.
+  (function setHeaderPeriod(){
+    const el = document.querySelector('header.top p');
+    if(!el) return;
+    const prettyDate = iso => {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+      return m ? `${Number(m[3])} ${MONTH_LABELS[Number(m[2])-1]} ${m[1]}` : null;
+    };
+    const natWeekly = (BUNDLE.weekly && BUNDLE.weekly.national) || {};
+    const weeklyYears = Object.keys(natWeekly).map(Number).sort((a,b)=>b-a);
+    for(const y of weeklyYears){
+      const rows = natWeekly[String(y)] || [];
+      if(!rows.length) continue;                       // a year key with no reported weeks
+      const last = rows[rows.length-1];                // update_data sorts each year by week
+      const ending = prettyDate(last.end);
+      el.textContent = `National Surveillance — DHF Weekly Report — Week ${last.week}, ${y}`
+        + (ending ? ` (week ending ${ending})` : '');
+      return;
+    }
+    const latestYear = myr.years[myr.years.length-1];
+    el.textContent = `National Surveillance — DHF Report — through ${MONTH_LABELS[lastReported2026-1]} ${latestYear}`;
+  })();
 
   // Province Ranking — Incidence Rate or Cases, combinable across selected years (matches the
   // "Province ranking" reference design: horizontal bars, grey ghost bar = case count on its own
@@ -1449,6 +1499,283 @@ function renderNational(){
     btn.addEventListener('click', ()=>{ setSharedMetric(btn.dataset.metric); });
   });
   renderTrendChart();
+
+  // ---- W1: Weekly epidemic curve — cases and deaths by epi week ----
+  // The weekly sheet is national by construction: the DHF bulletin's headline weekly figure is a
+  // country total, so National_Weekly_Entry lays out "All Cambodia" rows and province-level weekly
+  // rows are optional. That shapes how this chart answers the province filter — it uses a
+  // province's own weekly series when one has been entered, and otherwise falls back to the
+  // national curve with a badge saying so, rather than going blank the moment a province is picked.
+  const weekly = BUNDLE.weekly || { national:{}, provinces:{} };
+  const weeklyYearSelect = document.getElementById('weekly-year-select');
+  const weeklyBox = document.getElementById('weekly-chart-box');
+  const weeklyEmpty = document.getElementById('weekly-empty');
+  let weeklyChart = null;
+
+  function weeklyYearsAvailable(){
+    const ys = new Set(Object.keys(weekly.national || {}));
+    Object.values(weekly.provinces || {}).forEach(p => Object.keys(p).forEach(y => ys.add(y)));
+    return [...ys].map(Number).sort((a,b)=>b-a);
+  }
+  function weeklySeriesFor(provFull, year){
+    const natRows = (weekly.national || {})[String(year)] || [];
+    if(provFull && provFull !== '__ALL__'){
+      const provYears = (weekly.provinces || {})[provFull];
+      const provRows = provYears ? (provYears[String(year)] || []) : [];
+      if(provRows.length) return { rows: provRows, scope: provFull, fellBack:false };
+      return { rows: natRows, scope: 'Cambodia', fellBack:true };
+    }
+    return { rows: natRows, scope: 'Cambodia', fellBack:false };
+  }
+  // Weekly endemic channel: the same mean + 2SD construction N1 uses by month, rebuilt per ISO week
+  // from the earlier years of weekly entry for the same scope. It is deliberately NOT derived from
+  // the monthly baseline — spreading a monthly mean across four or five weeks would invent a weekly
+  // shape the source never reported, and the resulting "threshold" would be an artefact of the
+  // spreading rule rather than of any observed season. The price is that these lines cannot exist
+  // until there are earlier years of weekly entry to build them from, which is what the disabled
+  // state of the two checkboxes says out loud. A standard deviation needs at least two prior years.
+  const WEEKLY_BASELINE_MIN_YEARS = 2;
+  function weeklyBaselineFrom(store, year, weeks){
+    const priorYears = Object.keys(store || {}).map(Number).filter(y => y < year).sort((a,b)=>a-b);
+    const byWeek = {};
+    priorYears.forEach(y=>{
+      (store[String(y)] || []).forEach(r=>{ (byWeek[r.week] = byWeek[r.week] || []).push(r.cases); });
+    });
+    const mean = [], threshold = [];
+    let weeksCovered = 0;
+    weeks.forEach(w=>{
+      const vals = byWeek[w] || [];
+      if(vals.length < WEEKLY_BASELINE_MIN_YEARS){ mean.push(null); threshold.push(null); return; }
+      const m = vals.reduce((a,b)=>a+b,0) / vals.length;
+      // Population SD over the years actually reported, matching N1 rather than a sample SD.
+      const sd = Math.sqrt(vals.reduce((a,b)=>a+(b-m)**2,0) / vals.length);
+      mean.push(+m.toFixed(1));
+      threshold.push(+(m + 2*sd).toFixed(1));
+      weeksCovered++;
+    });
+    return { priorYears, mean, threshold, weeksCovered };
+  }
+
+  const wkShowDeaths = document.getElementById('weekly-show-deaths');
+  const wkShowEndemic = document.getElementById('weekly-show-endemic');
+  const wkShowEpidemic = document.getElementById('weekly-show-epidemic');
+
+  function showWeeklyEmpty(message){
+    if(weeklyChart){ weeklyChart.destroy(); weeklyChart = null; }
+    weeklyBox.style.display = 'none';
+    document.getElementById('weekly-toggle-row').style.display = 'none';
+    document.getElementById('weekly-note').textContent = '';
+    weeklyEmpty.style.display = 'block';
+    weeklyEmpty.innerHTML = message;
+  }
+
+  const weeklyYears = weeklyYearsAvailable();
+  weeklyYears.forEach(y=>{
+    const o = document.createElement('option'); o.value = y; o.textContent = y;
+    weeklyYearSelect.appendChild(o);
+  });
+  if(weeklyYears.length) weeklyYearSelect.value = weeklyYears[0];
+  document.getElementById('weekly-year-row').style.display = weeklyYears.length > 1 ? '' : 'none';
+  [wkShowDeaths, wkShowEndemic, wkShowEpidemic].forEach(cb=>{
+    cb.addEventListener('change', ()=> renderWeeklyChart());
+  });
+
+  function renderWeeklyChart(){
+    if(!weeklyYears.length){
+      showWeeklyEmpty('<b>No weekly data entered yet.</b><br>Open <span class="mono">Dengue_Master_Data_Entry.xlsx</span> → <span class="mono">National_Weekly_Entry</span>. The 2026 weeks are already laid out — fill in Cases and Deaths for each week the bulletin has reported, re-run <span class="mono">update_data</span>, and this curve appears. Leave a week blank until it is reported; a blank means "not reported", a 0 means "reported, no cases".');
+      return;
+    }
+    const year = Number(weeklyYearSelect.value) || weeklyYears[0];
+    const { rows, scope, fellBack } = weeklySeriesFor(gProvSelect.value, year);
+    if(!rows.length){
+      showWeeklyEmpty(`<b>No weeks reported yet for ${year}.</b><br>Add Cases and Deaths against the ${year} weeks in <span class="mono">National_Weekly_Entry</span> and re-run <span class="mono">update_data</span>.`);
+      return;
+    }
+    weeklyEmpty.style.display = 'none';
+    weeklyBox.style.display = '';
+    document.getElementById('weekly-toggle-row').style.display = '';
+
+    const narrow = NARROW();
+    const caseVals = rows.map(r=>r.cases);
+    const deathVals = rows.map(r=>r.deaths);
+
+    // The baseline has to come from the same source as the bars: if the province fell back to the
+    // national series, its channel must be the national one too, or the chart would compare a
+    // province's weeks against the country's threshold.
+    const usingProvince = !fellBack && gProvSelect.value !== '__ALL__';
+    const baselineStore = usingProvince ? ((weekly.provinces || {})[gProvSelect.value] || {}) : (weekly.national || {});
+    const baseline = weeklyBaselineFrom(baselineStore, year, rows.map(r=>r.week));
+    const haveBaseline = baseline.weeksCovered > 0;
+
+    // The two channel toggles are only meaningful once there is a channel. Rather than let someone
+    // tick a box that silently does nothing, disable them and say what is missing.
+    [[wkShowEndemic, 'weekly-endemic-label'], [wkShowEpidemic, 'weekly-epidemic-label']].forEach(([cb, labelId])=>{
+      const label = document.getElementById(labelId);
+      cb.disabled = !haveBaseline;
+      label.style.opacity = haveBaseline ? '' : '0.45';
+      label.title = haveBaseline ? '' :
+        `Needs at least ${WEEKLY_BASELINE_MIN_YEARS} earlier years of weekly data for this scope to build a mean and a standard deviation from. ` +
+        (baseline.priorYears.length ? `Only ${baseline.priorYears.join(', ')} available so far.` : 'No earlier year of weekly data has been entered yet.');
+    });
+    const showEndemic = haveBaseline && wkShowEndemic.checked;
+    const showEpidemic = haveBaseline && wkShowEpidemic.checked;
+    const showDeaths = wkShowDeaths.checked;
+
+    // A week over the epidemic threshold is coloured on the bar itself, not just left for the eye
+    // to read off a line crossing — same rule N1 applies to its breaching points.
+    const overThreshold = rows.map((r,i)=> showEpidemic && baseline.threshold[i]!=null && r.cases > baseline.threshold[i]);
+    const breachWeeks = rows.filter((r,i)=>overThreshold[i]).map(r=>r.week);
+    // A whole season above threshold is a real possibility, and listing 40 week numbers in the
+    // caption helps nobody — name the first few and count the rest.
+    const breachList = breachWeeks.length > 8
+      ? breachWeeks.slice(0,8).join(', ') + ` and ${breachWeeks.length - 8} more`
+      : breachWeeks.join(', ');
+
+    document.getElementById('weekly-chart-title').innerHTML =
+      `<span class="vno">W1</span>${scope} — Weekly Epidemic Curve, ${year}` +
+      (showEpidemic ? ` — ${breachWeeks.length} week${breachWeeks.length===1?'':'s'} above the epidemic threshold` : '') +
+      (fellBack ? ' <span class="scope-badge">National only</span>' : '');
+    // Death counts are typically 0-3 a week against hundreds or thousands of cases, so they get
+    // their own right axis — on the cases axis the line would sit flat on the floor and read as
+    // "no deaths". Same left-bars/right-line convention as N2.
+    // Weekly deaths run 0-3 against thousands of cases. Left on an auto-scaled axis, a single
+    // death in a week becomes a full-height spike that reads as a catastrophe — so the deaths axis
+    // keeps a floor of 4 and half again of headroom above the worst week. The axis is labelled, so
+    // the scale is still there to be read; what changes is that a 1 looks like a 1.
+    const maxDeaths = Math.max(0, ...deathVals);
+    const deathsAxisMax = Math.max(4, Math.ceil(maxDeaths * 1.5));
+    // Bar-end value labels, but measured rather than every-Nth: a full 52-week year at four digits
+    // overlaps into an unreadable smear long before the bars themselves get crowded, and how many
+    // fit depends on the digits as much as the week count. So the plugin walks left to right and
+    // drops any label that would collide with the last one it actually drew — a short early season
+    // stays fully labelled, a full year thins itself out, and the tooltip always has the exact number.
+    const barValueLabelW1 = {
+      id: 'barValueLabelW1',
+      afterDatasetsDraw(chart){
+        const meta = chart.getDatasetMeta(0);
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = narrow ? '400 8.5px Arial' : '400 10px Arial';
+        ctx.textAlign = 'center'; ctx.lineJoin = 'round';
+        let lastRight = -Infinity;
+        meta.data.forEach((bar,i)=>{
+          const text = fmt(caseVals[i]);
+          const half = ctx.measureText(text).width / 2;
+          if(bar.x - half < lastRight + 4) return;
+          // White halo, same treatment the map gives province labels over coloured polygons: the
+          // deaths line crosses this band and would otherwise slice through the digits.
+          ctx.strokeStyle = PALETTE.surface; ctx.lineWidth = 3;
+          ctx.strokeText(text, bar.x, bar.y - 6);
+          ctx.fillStyle = PALETTE.textMuted;
+          ctx.fillText(text, bar.x, bar.y - 6);
+          lastRight = bar.x + half;
+        });
+        ctx.restore();
+      }
+    };
+
+    // Dataset order: bars behind (highest `order`), then the two reference lines, deaths in front.
+    // N1 keeps its reference lines neutral grey because its shaded bands already carry the
+    // severity reading; W1 has no bands, so the two lines have to be told apart by colour on their
+    // own — green for the endemic mean, red for the epidemic threshold, and the same red on any
+    // bar that clears it, so the breach and the line that defines it read as one thing.
+    const datasets = [
+      {type:'bar', label:'Cases', data: caseVals, yAxisID:'y', order:4, pointStyle:'rect',
+       backgroundColor: rows.map((r,i)=> overThreshold[i] ? PALETTE.darkRed : COLORS[0])}
+    ];
+    if(showEndemic){
+      datasets.push({type:'line', label:'Endemic (historical mean)', data: baseline.mean,
+        borderColor: PALETTE.green, backgroundColor: PALETTE.green, borderDash:[6,4], borderWidth:1.5,
+        pointRadius:0, pointHoverRadius:4, pointHitRadius:10, tension:.35, fill:false, spanGaps:false,
+        yAxisID:'y', order:3, pointStyle:'line'});
+    }
+    if(showEpidemic){
+      datasets.push({type:'line', label:'Epidemic threshold (mean + 2SD)', data: baseline.threshold,
+        borderColor: PALETTE.darkRed, backgroundColor: PALETTE.darkRed, borderDash:[6,4], borderWidth:1.5,
+        pointRadius:0, pointHoverRadius:4, pointHitRadius:10, tension:.35, fill:false, spanGaps:false,
+        yAxisID:'y', order:2, pointStyle:'line'});
+    }
+    if(showDeaths){
+      datasets.push({type:'line', label:'Deaths', data: deathVals, borderColor: PALETTE.gold, backgroundColor: PALETTE.gold,
+        yAxisID:'y1', tension:.3, pointRadius:3, borderWidth:2.5, order:1, pointStyle:'line'});
+    }
+
+    if(weeklyChart) weeklyChart.destroy();
+    weeklyChart = new Chart(document.getElementById('chart-weekly'), {
+      data:{ labels: rows.map(r=>'W'+r.week), datasets },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{
+          // reverse: the datasets are ordered back-to-front for drawing (bars behind, deaths in
+          // front), which would otherwise put "Cases" last in the legend.
+          legend:{position:'top', reverse:true, labels:{usePointStyle:true,
+            // Per-bar colours make the default legend swatch whatever colour bar 1 happens to be —
+            // one breaching first week and the "Cases" key turns red. Pin it to the series colour.
+            generateLabels: chart => Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item =>
+              item.text === 'Cases' ? Object.assign(item, {fillStyle: COLORS[0], strokeStyle: COLORS[0]}) : item)
+          }},
+          tooltip:{ mode:'index', intersect:false, callbacks:{
+            // The week number alone doesn't say when the week was — put the actual dates in the
+            // tooltip title, since that's what anyone cross-checking against a bulletin needs.
+            title: items => {
+              const r = rows[items[0].dataIndex];
+              return r.start && r.end ? `Week ${r.week} · ${r.start} to ${r.end}` : `Week ${r.week}`;
+            },
+            label: ctx => ctx.raw == null
+              ? `${ctx.dataset.label}: no baseline for this week`
+              : `${ctx.dataset.label}: ${fmt(Math.round(ctx.raw))}`
+          } }
+        },
+        scales:{
+          y:{ beginAtZero:true, position:'left', title:{display:true, text:'Cases'} },
+          y1:{ display: showDeaths, beginAtZero:true, position:'right', title:{display:true, text:'Deaths'},
+               grid:{drawOnChartArea:false}, ticks:{precision:0}, suggestedMax: deathsAxisMax },
+          x:{ ticks:{ maxRotation: narrow?60:0, minRotation: narrow?60:0, autoSkip:true,
+                      maxTicksLimit: narrow?13:27, font:{size: narrow?9:11} } }
+        }
+      },
+      plugins:[barValueLabelW1]
+    });
+
+    const deathsWord = n => `${fmt(n)} death${n===1?'':'s'}`;
+    const last = rows[rows.length-1];
+    const prev = rows.length > 1 ? rows[rows.length-2] : null;
+    const totalCases = caseVals.reduce((a,b)=>a+b,0);
+    const totalDeaths = deathVals.reduce((a,b)=>a+b,0);
+    const peak = rows.reduce((a,b)=> b.cases > a.cases ? b : a, rows[0]);
+    let wow = '';
+    if(prev){
+      // Consecutive week numbers only — if there's a gap in the entered weeks, "vs last week"
+      // would silently compare across the gap and overstate the change.
+      if(prev.week === last.week - 1){
+        const diff = last.cases - prev.cases;
+        const pct = prev.cases ? Math.abs(diff/prev.cases*100).toFixed(0)+'%' : 'n/a';
+        wow = diff === 0
+          ? ' — unchanged from week ' + prev.week + '.'
+          : ` — ${diff>0?'up':'down'} ${fmt(Math.abs(diff))} cases (${pct}) on week ${prev.week}.`;
+      } else {
+        wow = ` — week ${prev.week} is the previous week entered, so there is a gap before this one.`;
+      }
+    }
+    document.getElementById('weekly-note').innerHTML =
+      `<b>${scope}</b>, ${year}: ${rows.length} week${rows.length===1?'':'s'} reported. Latest is <b>week ${last.week}</b>` +
+      (last.start ? ` (${last.start} to ${last.end})` : '') +
+      ` with <b>${fmt(last.cases)}</b> cases and ${deathsWord(last.deaths)}${wow}` +
+      `<br>Across the weeks reported so far: ${fmt(totalCases)} cases, ${deathsWord(totalDeaths)}. Peak week is week ${peak.week} at ${fmt(peak.cases)} cases.` +
+      '<br>' + (haveBaseline
+        ? `Endemic channel built from ${baseline.priorYears.join(', ')} weekly entry for this same scope — ${baseline.weeksCovered} of the ${rows.length} weeks shown rest on at least ${WEEKLY_BASELINE_MIN_YEARS} earlier years; the rest leave a gap in the two dashed lines rather than guessing.`
+          + (showEpidemic ? (breachWeeks.length
+              ? ` <b>Above the epidemic threshold: week${breachWeeks.length===1?'':'s'} ${breachList}</b> (shown in red).`
+              : ' No week is above the epidemic threshold.') : '')
+          + (baseline.priorYears.length < 3
+              ? ` <b>Read with caution:</b> a mean + 2SD built on only ${baseline.priorYears.length} earlier year${baseline.priorYears.length===1?'':'s'} is a wide and unstable band — it firms up as more years of weekly entry accumulate.` : '')
+        : `<b>No endemic or epidemic line yet.</b> Those two need at least ${WEEKLY_BASELINE_MIN_YEARS} earlier years of weekly data for this scope, and the sheet has ${baseline.priorYears.length ? 'only ' + baseline.priorYears.join(', ') : 'none'} so far. They are deliberately not borrowed from N1's monthly baseline — spreading a monthly mean across four or five weeks would invent a weekly shape the bulletin never reported.`) +
+      (fellBack ? `<br><b>Showing Cambodia, not ${gProvSelect.value}.</b> Weekly entry is national — no weekly rows have been entered for ${gProvSelect.value}. Add province rows in National_Weekly_Entry and this chart will follow the province filter for them.` : '') +
+      `<br><span style="color:var(--text-secondary);">Weekly counts come from the DHF weekly bulletin and are entered separately from the monthly sheet, so a weekly total and the corresponding month will not always reconcile exactly — the bulletin revises earlier weeks as late reports arrive.</span>`;
+  }
+  weeklyYearSelect.addEventListener('change', ()=> renderWeeklyChart());
+  renderWeeklyChart();
 
   // ---- N1: Outbreak Signal — endemic-channel method (mean + 2SD), counts only ----
   const HIST_YEARS_EPI = [2018,2019,2020,2021,2022,2023,2024,2025];
@@ -2149,6 +2476,7 @@ function renderNational(){
     renderInsightPanel();
     if(!crossFilterReady) return;
     renderTrendChart();
+    renderWeeklyChart();
     renderCumulativeChart();
     renderEpiChannel();
     renderProvinceChart();
